@@ -164,7 +164,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <textarea id="summary" readonly aria-label="Result text"></textarea>
   <div class="btns">
     <button class="act primary" id="save" type="button">Save / Simpan</button>
-    <button class="act" id="send" type="button">Send to Shin / Kirim ke Shin</button>
+    <button class="act" id="send" type="button">Send it to the Trading Sage / Kirim ke Trading Sage</button>
     <button class="act" id="reset" type="button">Exit / Reset</button>
   </div>
   <div id="status" role="status"></div>
@@ -330,7 +330,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     armed=false;b.textContent=label;
     rows=[];for(var i=0;i<N;i++)rows.push({c:"",s:0,m:0});
     fields.forEach(function(f){$(f).value=""});$("date").value=today();
-    sentOK=false;$("send").disabled=false;$("send").textContent="Send to Shin / Kirim ke Shin";$("done").hidden=true;
+    sentOK=false;$("send").disabled=false;$("send").textContent="Send it to the Trading Sage / Kirim ke Trading Sage";$("done").hidden=true;
     update();$("status").textContent="Card cleared. / Kartu dikosongkan.";window.scrollTo(0,0);
   });
   /* Sending: paste the Apps Script web app URL and the same token here. */
