@@ -324,6 +324,8 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(!$("name").value.trim()){st.textContent="Please type your name first. / Isi nama dulu.";$("name").focus();return}
     var has=rows.some(function(r){return r.s||r.m});
     if(!has){st.textContent="Add at least one score first. / Isi minimal satu nilai.";return}
+    var miss=rows.some(function(r){return (r.s||r.m)&&!r.c.trim()});
+    if(miss){st.textContent="Type a criterion name for every row that has a score. / Isi nama kriteria untuk setiap baris yang sudah diberi nilai.";return}
     if(sending)return;sending=true;st.textContent="Sending... / Mengirim...";
     var body={token:SEND_TOKEN,name:$("name").value.trim(),date:$("date").value,week:$("week").value,focus:$("focus").value.trim(),
       rows:rows.filter(function(r){return r.c||r.s||r.m}),r1:$("r1").value.trim(),r2:$("r2").value.trim(),r3:$("r3").value.trim(),r4:$("r4").value.trim()};
