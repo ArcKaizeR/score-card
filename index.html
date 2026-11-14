@@ -114,6 +114,14 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <li><b>3</b><div>Press Copy result and paste it into Telegram. Log it in the tracker sheet.<em>Tekan Salin hasil dan tempel ke Telegram. Catat di lembar pelacak.</em></div></li>
 </ol></div>
 
+<h2>Mentor <span>/ Mentor</span></h2>
+<details class="card" id="loadbox">
+  <summary style="cursor:pointer;font-weight:800">Load a student's result / Muat hasil siswa</summary>
+  <p class="empty" style="margin:10px 0">Paste the result the student sent, then add your Mentor scores below. / Tempel hasil dari siswa, lalu isi nilai Mentor di bawah.</p>
+  <textarea id="paste" aria-label="Student result text" placeholder="SCORE CARD / KARTU SKOR ..."></textarea>
+  <div class="btns"><button class="act primary" id="load" type="button">Load / Muat</button></div>
+</details>
+
 <h2>Details <span>/ Data</span></h2>
 <div class="card grid">
   <div class="name"><label class="f" for="name">Name <i>/ Nama</i></label><input type="text" id="name" autocomplete="name"></div>
@@ -322,6 +330,34 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
       .then(function(){sending=false;st.textContent="Sent. Shin will see it in the sheet. / Terkirim. Shin akan melihatnya di lembar."})
       .catch(function(){sending=false;st.textContent="Could not send. Check your connection and try again. / Gagal kirim. Periksa koneksi lalu coba lagi."});
+  });
+  function parseResult(t){
+    var out={rows:[]},last=null,inTable=false,keys={"Why these scores":"r1","Did well":"r2","Improve next week":"r3","Next drill":"r4"};
+    t.split(/\r?\n/).forEach(function(L){
+      var m;
+      if((m=L.match(/^Name:\s*(.*)$/))){out.name=m[1];last=null}
+      else if((m=L.match(/^Date:\s*(\S*)\s+Week:\s*(.*)$/))){out.date=m[1];out.week=m[2];last=null}
+      else if((m=L.match(/^Focus:\s*(.*)$/))){out.focus=m[1];last=null}
+      else if(/^Criterion \| Self/.test(L)){inTable=true;last=null}
+      else if(/^Average gap:/.test(L)){inTable=false;last=null}
+      else if((m=L.match(/^(Why these scores|Did well|Improve next week|Next drill):\s*(.*)$/))){inTable=false;last=keys[m[1]];out[last]=m[2]}
+      else if(inTable&&L.indexOf("|")>-1){var p=L.split("|").map(function(x){return x.trim()});if(p.length>=4)out.rows.push({c:p[0],s:+p[1]||0,m:+p[2]||0})}
+      else if(last&&L.trim()){out[last]+="\n"+L}
+    });
+    return out;
+  }
+  $("load").addEventListener("click",function(){
+    var st=$("status"),t=$("paste").value;
+    if(t.indexOf("SCORE CARD")<0){st.textContent="That does not look like a result. Paste the full text. / Teks tidak dikenali. Tempel teks lengkap.";return}
+    var o=parseResult(t);
+    rows=[];for(var i=0;i<N;i++){var r=o.rows[i]||{c:"",s:0,m:0};rows.push({c:/^Criterion \d+$/.test(r.c)?"":r.c,s:r.s,m:r.m})}
+    var clean=function(v){return v==null||v==="-"?"":v};
+    $("name").value=clean(o.name);$("week").value=clean(o.week);$("focus").value=clean(o.focus);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(o.date||""))$("date").value=o.date;
+    ["r1","r2","r3","r4"].forEach(function(k){$(k).value=clean(o[k])});
+    update();$("loadbox").open=false;
+    st.textContent="Loaded. Now add your Mentor scores. / Dimuat. Sekarang isi nilai Mentor.";
+    $("crits").scrollIntoView();
   });
   renderSaved();
 })();
