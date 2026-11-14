@@ -93,6 +93,10 @@ body.student .rows{grid-template-columns:1fr}
 .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 button.act{font:inherit;font-weight:800;border-radius:10px;padding:12px 18px;cursor:pointer;border:1.5px solid var(--ink);background:transparent;color:var(--ink)}
 button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
+.done{margin-top:12px;padding:14px 16px;border-radius:12px;background:var(--head);color:#fff}
+.done b{color:var(--gold)}
+.done ol{margin:6px 0 0;padding-left:20px}
+.done[hidden]{display:none}
 #status{margin-top:8px;font-size:13px;color:var(--muted);min-height:20px}
 #summary{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;min-height:200px;white-space:pre-wrap}
 .how{display:grid;gap:8px;margin:0;padding:0;list-style:none}
@@ -164,6 +168,14 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     <button class="act" id="reset" type="button">Exit / Reset</button>
   </div>
   <div id="status" role="status"></div>
+  <div id="done" class="done" hidden>
+    <b>Sent! / Terkirim!</b>
+    <ol>
+      <li>Your mentor will add scores in a few days. / Mentor akan menambahkan nilai dalam beberapa hari.</li>
+      <li>No need to send again. / Tidak perlu kirim lagi.</li>
+      <li>Next week, start a new card. / Minggu depan, mulai kartu baru.</li>
+    </ol>
+  </div>
 </div>
 
 <h2>Saved cards <span>/ Kartu tersimpan</span></h2>
@@ -318,11 +330,12 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     armed=false;b.textContent=label;
     rows=[];for(var i=0;i<N;i++)rows.push({c:"",s:0,m:0});
     fields.forEach(function(f){$(f).value=""});$("date").value=today();
+    sentOK=false;$("send").disabled=false;$("send").textContent="Send to Shin / Kirim ke Shin";$("done").hidden=true;
     update();$("status").textContent="Card cleared. / Kartu dikosongkan.";window.scrollTo(0,0);
   });
   /* Sending: paste the Apps Script web app URL and the same token here. */
   var SEND_URL="https://script.google.com/macros/s/AKfycbwuUM9PW8BZUQzh4IJAudaC17mPKcTKVMjiXWXCh3PXEdn4Dp0IECNONvkizkkiknWO/exec", SEND_TOKEN="Student Score";
-  var sending=false;
+  var sending=false,sentOK=false;
   $("send").addEventListener("click",function(){
     var st=$("status");
     if(!SEND_URL){st.textContent="Sending is not set up yet. / Pengiriman belum diatur.";return}
@@ -331,11 +344,11 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(!has){st.textContent="Add at least one score first. / Isi minimal satu nilai.";return}
     var miss=rows.some(function(r){return (r.s||r.m)&&!r.c.trim()});
     if(miss){st.textContent="Type a criterion name for every row that has a score. / Isi nama kriteria untuk setiap baris yang sudah diberi nilai.";return}
-    if(sending)return;sending=true;st.textContent="Sending... / Mengirim...";
+    if(sending||sentOK)return;sending=true;st.textContent="Sending... / Mengirim...";
     var body={token:SEND_TOKEN,name:$("name").value.trim(),date:$("date").value,week:$("week").value,focus:$("focus").value.trim(),
       rows:rows.filter(function(r){return r.c||r.s||r.m}),r1:$("r1").value.trim(),r2:$("r2").value.trim(),r3:$("r3").value.trim(),r4:$("r4").value.trim()};
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
-      .then(function(){sending=false;st.textContent="Sent. Shin will see it in the sheet. / Terkirim. Shin akan melihatnya di lembar."})
+      .then(function(){sending=false;sentOK=true;var sb=$("send");sb.disabled=true;sb.textContent="Sent / Terkirim \u2713";$("done").hidden=false;st.textContent="";$("done").scrollIntoView({block:"nearest"})})
       .catch(function(){sending=false;st.textContent="Could not send. Check your connection and try again. / Gagal kirim. Periksa koneksi lalu coba lagi."});
   });
   function parseResult(t){
