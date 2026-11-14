@@ -76,6 +76,16 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid v
 .seg button[aria-pressed="true"]{background:var(--c);color:#fff}
 .seg.self{--c:var(--self)} .seg.mentor{--c:var(--mentor)}
 .gapbox{min-width:84px}
+.why{margin-top:12px}
+.why textarea{min-height:56px}
+.pics{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.pics label.add{display:inline-block;font-size:13px;font-weight:700;border:1.5px dashed var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
+.pics input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.pics input[type=file]:focus-visible+span{outline:3px solid var(--gold);outline-offset:1px}
+.thumb{position:relative;width:64px;height:64px;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb button{position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(20,33,61,.85);color:#fff;font-weight:800;line-height:1;cursor:pointer}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
 body.student .monly,body.student .mcol,body.student .gapbox,body.student #verdict{display:none!important}
 body.student .rows{grid-template-columns:1fr}
 .mbadge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;background:var(--gold);color:#14213d;font-weight:800;font-size:12px}
@@ -186,8 +196,8 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
 <script>
 (function(){
   var N=5, KEY="score-card-draft";
-  var rows=[];
-  for(var i=0;i<N;i++) rows.push({c:"",s:0,m:0});
+  var rows=[],pics=[];
+  for(var i=0;i<N;i++){rows.push({c:"",s:0,m:0,e:""});pics.push([])}
   var $=function(id){return document.getElementById(id)};
   var fields=["name","date","week","focus","r1","r2","r3","r4"];
 
@@ -204,7 +214,12 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         '<div><label class="f">Self <i>/ Diri</i></label><div class="seg self" data-k="s">'+btns("s",i)+'</div></div>'+
         '<div class="mcol"><label class="f">Mentor</label><div class="seg mentor" data-k="m">'+btns("m",i)+'</div></div>'+
         '<div class="gapbox"><label class="f">Gap <i>/ Selisih</i></label><div class="gap" id="g'+i+'">-</div></div>'+
-        '</div></div>';
+        '</div>'+
+        '<div class="why"><label class="f" for="e'+i+'">Why this score? <i>/ Kenapa nilai ini? Explain based on your own situation. / Jelaskan sesuai kondisimu.</i></label>'+
+        '<textarea id="e'+i+'" data-k="e" placeholder="Example: Yesterday I ... because ... / Contoh: Kemarin saya ... karena ..."></textarea>'+
+        '<div class="pics"><label class="add"><input type="file" accept="image/*" multiple data-pic="'+i+'"><span>+ Picture / Gambar</span></label><span class="thumbs" id="t'+i+'" style="display:contents"></span></div>'+
+        '<div class="hint">Add up to 2 pictures, or paste one into the box above. / Tambah maks. 2 gambar, atau tempel gambar ke kotak di atas.</div></div>'+
+        '</div>';
     }
     $("crits").innerHTML=h;
   }
@@ -238,8 +253,9 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     L.push("");
     L.push("Criterion | Self | Mentor | Gap");
     for(var i=0;i<N;i++){
-      var r=rows[i]; if(!r.c&&!r.s&&!r.m) continue;
+      var r=rows[i]; if(!r.c&&!r.s&&!r.m&&!r.e) continue;
       L.push((r.c||("Criterion "+(i+1)))+" | "+(r.s||"-")+" | "+(r.m||"-")+" | "+((r.s&&r.m)?fmt(r.m-r.s):"-"));
+      if(r.e&&r.e.trim()) L.push("   Why: "+r.e.trim().replace(/\s*\n\s*/g," "));
     }
     if(g) L.push("Average gap: "+fmt(Math.round(g.avg*10)/10));
     L.push("");
@@ -255,6 +271,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         for(var j=0;j<bs.length;j++) bs[j].setAttribute("aria-pressed",String(rows[i][k]===j+1));
       });
       var inp=$("c"+i); if(inp.value!==rows[i].c) inp.value=rows[i].c;
+      var ta=$("e"+i); if(ta.value!==(rows[i].e||"")) ta.value=rows[i].e||"";
     }
     $("summary").value=text();
   }
@@ -282,10 +299,55 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     rows[i][k]=rows[i][k]===v?0:v;update();
   });
   $("crits").addEventListener("input",function(e){
-    var t=e.target;if(t.getAttribute("data-k")!=="c")return;
-    rows[+t.closest(".crit").getAttribute("data-i")].c=t.value;update();
+    var t=e.target,k=t.getAttribute("data-k");if(k!=="c"&&k!=="e")return;
+    rows[+t.closest(".crit").getAttribute("data-i")][k]=t.value;update();
   });
   fields.forEach(function(f){$(f).addEventListener("input",update)});
+
+  /* Pictures: shrunk in the browser, sent with the card, kept in memory only */
+  var MAXPIC=2;
+  function drawThumbs(i){
+    var box=$("t"+i);box.innerHTML="";
+    pics[i].forEach(function(u,k){
+      var d=document.createElement("div");d.className="thumb";
+      var im=document.createElement("img");im.src=u;im.alt="Picture "+(k+1);
+      var b=document.createElement("button");b.type="button";b.textContent="\u00d7";b.setAttribute("aria-label","Remove picture / Hapus gambar");
+      b.addEventListener("click",function(){pics[i].splice(k,1);drawThumbs(i);$("status").textContent=""});
+      d.appendChild(im);d.appendChild(b);box.appendChild(d);
+    });
+  }
+  function drawAllThumbs(){for(var i=0;i<N;i++)drawThumbs(i)}
+  function addPic(i,file){
+    var st=$("status");
+    if(!file||!/^image\//.test(file.type)){st.textContent="That file is not a picture. / Itu bukan gambar.";return}
+    if(pics[i].length>=MAXPIC){st.textContent="Maximum 2 pictures per criterion. / Maksimal 2 gambar per kriteria.";return}
+    var fr=new FileReader();
+    fr.onload=function(){
+      var im=new Image();
+      im.onload=function(){
+        var M=1000,w=im.width,h=im.height,sc=Math.min(1,M/Math.max(w,h));
+        var c=document.createElement("canvas");c.width=Math.round(w*sc);c.height=Math.round(h*sc);
+        var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+        if(pics[i].length>=MAXPIC)return;
+        pics[i].push(c.toDataURL("image/jpeg",0.72));drawThumbs(i);st.textContent="Picture added. / Gambar ditambahkan.";
+      };
+      im.onerror=function(){st.textContent="Could not read that picture. / Gambar tidak bisa dibaca."};
+      im.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  }
+  $("crits").addEventListener("change",function(e){
+    var t=e.target,i=t.getAttribute("data-pic");if(i===null)return;
+    Array.prototype.forEach.call(t.files,function(f){addPic(+i,f)});t.value="";
+  });
+  $("crits").addEventListener("paste",function(e){
+    var t=e.target;if(t.getAttribute("data-k")!=="e")return;
+    var items=(e.clipboardData&&e.clipboardData.items)||[],got=false;
+    for(var k=0;k<items.length;k++){
+      if(items[k].kind==="file"&&/^image\//.test(items[k].type)){addPic(+t.closest(".crit").getAttribute("data-i"),items[k].getAsFile());got=true}
+    }
+    if(got)e.preventDefault();
+  });
 
   var SKEY="score-card-saved";
   function getSaved(){try{return JSON.parse(localStorage.getItem(SKEY)||"[]")}catch(e){return []}}
@@ -317,7 +379,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var o=e.target.getAttribute("data-open"),d=e.target.getAttribute("data-del"),a=getSaved();
     if(o){
       var x=a.filter(function(r){return String(r.id)===o})[0];if(!x)return;
-      rows=x.rows;fields.forEach(function(f){$(f).value=x[f]!=null?x[f]:""});update();
+      rows=x.rows;pics=[];for(var q=0;q<N;q++)pics.push([]);drawAllThumbs();fields.forEach(function(f){$(f).value=x[f]!=null?x[f]:""});update();
       $("status").textContent="Card opened. / Kartu dibuka.";window.scrollTo(0,0);
     }else if(d){
       putSaved(a.filter(function(r){return String(r.id)!==d}));renderSaved();
@@ -328,7 +390,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var b=$("reset");
     if(!armed){armed=true;b.textContent="Tap again to clear / Ketuk lagi";setTimeout(function(){armed=false;b.textContent=label},4000);return}
     armed=false;b.textContent=label;
-    rows=[];for(var i=0;i<N;i++)rows.push({c:"",s:0,m:0});
+    rows=[];pics=[];for(var i=0;i<N;i++){rows.push({c:"",s:0,m:0,e:""});pics.push([])}drawAllThumbs();
     fields.forEach(function(f){$(f).value=""});$("date").value=today();
     sentOK=false;$("send").disabled=false;$("send").textContent="Send it to the Trading Sage / Kirim ke Trading Sage";$("done").hidden=true;
     update();$("status").textContent="Card cleared. / Kartu dikosongkan.";window.scrollTo(0,0);
@@ -342,11 +404,11 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(!$("name").value.trim()){st.textContent="Please type your name first. / Isi nama dulu.";$("name").focus();return}
     var has=rows.some(function(r){return r.s||r.m});
     if(!has){st.textContent="Add at least one score first. / Isi minimal satu nilai.";return}
-    var miss=rows.some(function(r){return (r.s||r.m)&&!r.c.trim()});
+    var miss=rows.some(function(r,i){return (r.s||r.m||(r.e&&r.e.trim())||pics[i].length)&&!r.c.trim()});
     if(miss){st.textContent="Type a criterion name for every row that has a score. / Isi nama kriteria untuk setiap baris yang sudah diberi nilai.";return}
     if(sending||sentOK)return;sending=true;st.textContent="Sending... / Mengirim...";
     var body={token:SEND_TOKEN,name:$("name").value.trim(),date:$("date").value,week:$("week").value,focus:$("focus").value.trim(),
-      rows:rows.filter(function(r){return r.c||r.s||r.m}),r1:$("r1").value.trim(),r2:$("r2").value.trim(),r3:$("r3").value.trim(),r4:$("r4").value.trim()};
+      rows:rows.map(function(r,i){return {c:r.c,s:r.s,m:r.m,e:(r.e||"").trim(),img:pics[i]}}).filter(function(r){return r.c||r.s||r.m||r.e||r.img.length}),r1:$("r1").value.trim(),r2:$("r2").value.trim(),r3:$("r3").value.trim(),r4:$("r4").value.trim()};
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
       .then(function(){sending=false;sentOK=true;var sb=$("send");sb.disabled=true;sb.textContent="Sent / Terkirim \u2713";$("done").hidden=false;st.textContent="";$("done").scrollIntoView({block:"nearest"})})
       .catch(function(){sending=false;st.textContent="Could not send. Check your connection and try again. / Gagal kirim. Periksa koneksi lalu coba lagi."});
@@ -361,6 +423,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       else if(/^Criterion \| Self/.test(L)){inTable=true;last=null}
       else if(/^Average gap:/.test(L)){inTable=false;last=null}
       else if((m=L.match(/^(Why these scores|Did well|Improve next week|Next drill):\s*(.*)$/))){inTable=false;last=keys[m[1]];out[last]=m[2]}
+      else if(inTable&&(m=L.match(/^\s+Why:\s*(.*)$/))){if(out.rows.length)out.rows[out.rows.length-1].e=m[1]}
       else if(inTable&&L.indexOf("|")>-1){var p=L.split("|").map(function(x){return x.trim()});if(p.length>=4)out.rows.push({c:p[0],s:+p[1]||0,m:+p[2]||0})}
       else if(last&&L.trim()){out[last]+="\n"+L}
     });
@@ -370,7 +433,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var st=$("status"),t=$("paste").value;
     if(t.indexOf("SCORE CARD")<0){st.textContent="That does not look like a result. Paste the full text. / Teks tidak dikenali. Tempel teks lengkap.";return}
     var o=parseResult(t);
-    rows=[];for(var i=0;i<N;i++){var r=o.rows[i]||{c:"",s:0,m:0};rows.push({c:/^Criterion \d+$/.test(r.c)?"":r.c,s:r.s,m:r.m})}
+    rows=[];for(var i=0;i<N;i++){var r=o.rows[i]||{c:"",s:0,m:0,e:""};rows.push({c:/^Criterion \d+$/.test(r.c)?"":r.c,s:r.s,m:r.m,e:r.e||""})}
     var clean=function(v){return v==null||v==="-"?"":v};
     $("name").value=clean(o.name);$("week").value=clean(o.week);$("focus").value=clean(o.focus);
     if(/^\d{4}-\d{2}-\d{2}$/.test(o.date||""))$("date").value=o.date;
