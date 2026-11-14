@@ -168,7 +168,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <div class="name"><label class="f" for="name">Name <i>/ Nama</i></label><input type="text" id="name" autocomplete="name"></div>
   <div><label class="f" for="date">Date <i>/ Tanggal</i></label><input type="date" id="date"></div>
   <div><label class="f" for="week">Week <i>/ Minggu</i></label><input type="number" id="week" min="1" max="12" inputmode="numeric" placeholder="1-12"></div>
-  <div class="wide"><label class="f" for="focus">Focus criterion <i>/ Kriteria fokus</i></label><input type="text" id="focus"></div>
+  <div class="wide"><label class="f" for="focus">Focus criterion <i>/ Kriteria fokus</i></label><input type="text" id="focus" list="critlist"><datalist id="critlist"></datalist></div>
   <div class="wide sonly"><label class="f" for="code">Your secret code <i>/ Kode rahasiamu (min. 4)</i></label><input type="text" id="code" autocomplete="off" maxlength="20" placeholder="e.g. mango42"><div class="hint">Pick a code and use the same one every week. You need it to read your mentor's feedback. / Pilih kode dan pakai yang sama tiap minggu. Kode dipakai untuk membaca umpan balik mentor.</div></div>
 </div>
 
@@ -310,9 +310,12 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       if(o&&o.rows&&o.rows.length===N){rows=o.rows;fields.forEach(function(f){if(o[f]!=null)$(f).value=o[f]})}
     }catch(e){}
   }
-  function update(){paint();save()}
+  /* The same 5 criteria every week. Edit this list to change them for everyone. */
+  var CRITS=["Asking questions / Bertanya","Checking facts / Cek fakta","Other views / Sudut pandang lain","Reasoning / Penalaran","Admitting mistakes / Mengakui kesalahan"];
+  function fixNames(){var stu=document.body.classList.contains("student");for(var i=0;i<N;i++){if(rows[i]&&!rows[i].c)rows[i].c=CRITS[i];var el=$("c"+i);if(el)el.readOnly=stu}}
+  function update(){fixNames();paint();save()}
 
-  build();load();
+  build();load();(function(){var dl=$("critlist");CRITS.forEach(function(c){var o=document.createElement("option");o.value=c;dl.appendChild(o)})})();
   if(!$("date").value) $("date").value=today();
   update();
 
