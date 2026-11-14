@@ -76,6 +76,9 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid v
 .seg button[aria-pressed="true"]{background:var(--c);color:#fff}
 .seg.self{--c:var(--self)} .seg.mentor{--c:var(--mentor)}
 .gapbox{min-width:84px}
+body.student .monly,body.student .mcol,body.student .gapbox,body.student #verdict{display:none!important}
+body.student .rows{grid-template-columns:1fr}
+.mbadge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;background:var(--gold);color:#14213d;font-weight:800;font-size:12px}
 .gap{height:40px;border-radius:10px;border:1.5px solid var(--gold);display:grid;place-items:center;font-weight:800;font-variant-numeric:tabular-nums}
 .scale{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 @media (max-width:560px){.scale{grid-template-columns:1fr 1fr}}
@@ -99,9 +102,11 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
 </style>
 </head>
 <body>
+<script>try{if(!/[?&]mentor(=|&|$)/.test(location.search))document.body.className+=" student"}catch(e){document.body.className+=" student"}</script>
 <header><div class="in">
   <h1>Online Score Card</h1>
   <div class="id">Kartu Skor Online</div>
+  <div class="mbadge monly">Mentor view / Tampilan Mentor</div>
   <p>Self-score first, then mentor. Copy the result and send it on Telegram.<br>Nilai diri dulu, lalu mentor. Salin hasilnya dan kirim lewat Telegram.</p>
 </div></header>
 
@@ -114,8 +119,8 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <li><b>3</b><div>Press Copy result and paste it into Telegram. Log it in the tracker sheet.<em>Tekan Salin hasil dan tempel ke Telegram. Catat di lembar pelacak.</em></div></li>
 </ol></div>
 
-<h2>Mentor <span>/ Mentor</span></h2>
-<details class="card" id="loadbox">
+<h2 class="monly">Mentor <span>/ Mentor</span></h2>
+<details class="card monly" id="loadbox">
   <summary style="cursor:pointer;font-weight:800">Load a student's result / Muat hasil siswa</summary>
   <p class="empty" style="margin:10px 0">Paste the result the student sent, then add your Mentor scores below. / Tempel hasil dari siswa, lalu isi nilai Mentor di bawah.</p>
   <textarea id="paste" aria-label="Student result text" placeholder="SCORE CARD / KARTU SKOR ..."></textarea>
@@ -185,7 +190,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         '<input type="text" id="c'+i+'" data-k="c"></div></div>'+
         '<div class="rows">'+
         '<div><label class="f">Self <i>/ Diri</i></label><div class="seg self" data-k="s">'+btns("s",i)+'</div></div>'+
-        '<div><label class="f">Mentor</label><div class="seg mentor" data-k="m">'+btns("m",i)+'</div></div>'+
+        '<div class="mcol"><label class="f">Mentor</label><div class="seg mentor" data-k="m">'+btns("m",i)+'</div></div>'+
         '<div class="gapbox"><label class="f">Gap <i>/ Selisih</i></label><div class="gap" id="g'+i+'">-</div></div>'+
         '</div></div>';
     }
