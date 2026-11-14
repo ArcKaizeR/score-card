@@ -76,6 +76,12 @@ input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid v
 .seg button[aria-pressed="true"]{background:var(--c);color:#fff}
 .seg.self{--c:var(--self)} .seg.mentor{--c:var(--mentor)}
 .gapbox{min-width:84px}
+body:not(.student) .sonly{display:none!important}
+.fbitem{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:8px}
+.fbitem b{display:block}
+.fbitem small{display:block;color:var(--muted);margin:2px 0 6px}
+.fbitem .wait{color:var(--muted);font-style:italic}
+.fbitem .msg{white-space:pre-wrap}
 .why{margin-top:12px}
 .why textarea{min-height:56px}
 .pics{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
@@ -133,6 +139,19 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <li><b>3</b><div>Press Copy result and paste it into Telegram. Log it in the tracker sheet.<em>Tekan Salin hasil dan tempel ke Telegram. Catat di lembar pelacak.</em></div></li>
 </ol></div>
 
+<h2 class="sonly">Check my feedback <span>/ Cek umpan balik</span></h2>
+<details class="card sonly" id="fbbox">
+  <summary style="cursor:pointer;font-weight:800">Open / Buka</summary>
+  <p class="empty" style="margin:10px 0">Type the same name and secret code you used when you sent your card. / Ketik nama dan kode rahasia yang sama saat kamu mengirim kartu.</p>
+  <div class="grid">
+    <div class="wide"><label class="f" for="fbname">Name <i>/ Nama</i></label><input type="text" id="fbname" autocomplete="name"></div>
+    <div class="wide"><label class="f" for="fbcode">Secret code <i>/ Kode rahasia</i></label><input type="text" id="fbcode" autocomplete="off" maxlength="20"></div>
+  </div>
+  <div class="btns"><button class="act primary" id="fbgo" type="button">Check / Cek</button></div>
+  <div id="fbstatus" class="empty" role="status" style="margin-top:8px"></div>
+  <div id="fbout"></div>
+</details>
+
 <h2 class="monly">Mentor <span>/ Mentor</span></h2>
 <details class="card monly" id="loadbox">
   <summary style="cursor:pointer;font-weight:800">Load a student's result / Muat hasil siswa</summary>
@@ -147,6 +166,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <div><label class="f" for="date">Date <i>/ Tanggal</i></label><input type="date" id="date"></div>
   <div><label class="f" for="week">Week <i>/ Minggu</i></label><input type="number" id="week" min="1" max="12" inputmode="numeric" placeholder="1-12"></div>
   <div class="wide"><label class="f" for="focus">Focus criterion <i>/ Kriteria fokus</i></label><input type="text" id="focus"></div>
+  <div class="wide sonly"><label class="f" for="code">Your secret code <i>/ Kode rahasiamu (min. 4)</i></label><input type="text" id="code" autocomplete="off" maxlength="20" placeholder="e.g. mango42"><div class="hint">Pick a code and use the same one every week. You need it to read your mentor's feedback. / Pilih kode dan pakai yang sama tiap minggu. Kode dipakai untuk membaca umpan balik mentor.</div></div>
 </div>
 
 <h2>Scale <span>/ Skala</span></h2>
@@ -199,7 +219,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   var rows=[],pics=[];
   for(var i=0;i<N;i++){rows.push({c:"",s:0,m:0,e:""});pics.push([])}
   var $=function(id){return document.getElementById(id)};
-  var fields=["name","date","week","focus","r1","r2","r3","r4"];
+  var fields=["name","date","week","focus","code","r1","r2","r3","r4"];
 
   function today(){var d=new Date();var m=("0"+(d.getMonth()+1)).slice(-2),dd=("0"+d.getDate()).slice(-2);return d.getFullYear()+"-"+m+"-"+dd}
 
@@ -349,6 +369,35 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(got)e.preventDefault();
   });
 
+  /* Check my feedback: reads the mentor's feedback for this name + secret code */
+  $("fbbox").addEventListener("toggle",function(){
+    if(!$("fbbox").open)return;
+    if(!$("fbname").value)$("fbname").value=$("name").value;
+    if(!$("fbcode").value)$("fbcode").value=$("code").value;
+  });
+  $("fbgo").addEventListener("click",function(){
+    var st=$("fbstatus"),out=$("fbout"),n=$("fbname").value.trim(),c=$("fbcode").value.trim();
+    out.innerHTML="";
+    if(!n||c.length<4){st.textContent="Type your name and your secret code. / Isi nama dan kode rahasiamu.";return}
+    st.textContent="Checking... / Memeriksa...";
+    fetch(SEND_URL+"?action=feedback&name="+encodeURIComponent(n)+"&code="+encodeURIComponent(c))
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(d.locked){st.textContent="Too many tries. Please wait 15 minutes. / Terlalu banyak percobaan. Tunggu 15 menit.";return}
+        if(!d.rows||!d.rows.length){st.textContent="Nothing found. Check your name and code, or send a card first. / Tidak ditemukan. Periksa nama dan kodemu, atau kirim kartu dulu.";return}
+        st.textContent="";
+        d.rows.forEach(function(r){
+          var box=document.createElement("div");box.className="fbitem";
+          var h=document.createElement("b");h.textContent="Week "+(r.week||"-")+" \u00b7 "+(r.criterion||"-");
+          var sm=document.createElement("small");sm.textContent="Self "+(r.self||"-")+" | Mentor "+(r.mentor||"-")+" | Gap "+(r.gap===""||r.gap==null?"-":r.gap)+" | "+(r.date||"");
+          var m=document.createElement("div");
+          if(r.feedback){m.className="msg";m.textContent=r.feedback}else{m.className="wait";m.textContent="Waiting for your mentor. / Menunggu mentor."}
+          box.appendChild(h);box.appendChild(sm);box.appendChild(m);out.appendChild(box);
+        });
+      })
+      .catch(function(){st.textContent="Could not check right now. Try again later. / Gagal memeriksa. Coba lagi nanti."});
+  });
+
   var SKEY="score-card-saved";
   function getSaved(){try{return JSON.parse(localStorage.getItem(SKEY)||"[]")}catch(e){return []}}
   function putSaved(a){try{localStorage.setItem(SKEY,JSON.stringify(a));return true}catch(e){return false}}
@@ -391,7 +440,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(!armed){armed=true;b.textContent="Tap again to clear / Ketuk lagi";setTimeout(function(){armed=false;b.textContent=label},4000);return}
     armed=false;b.textContent=label;
     rows=[];pics=[];for(var i=0;i<N;i++){rows.push({c:"",s:0,m:0,e:""});pics.push([])}drawAllThumbs();
-    fields.forEach(function(f){$(f).value=""});$("date").value=today();
+    var stu=document.body.classList.contains("student");fields.forEach(function(f){if(stu&&(f==="name"||f==="code"))return;$(f).value=""});$("date").value=today();
     sentOK=false;$("send").disabled=false;$("send").textContent="Send it to the Trading Sage / Kirim ke Trading Sage";$("done").hidden=true;
     update();$("status").textContent="Card cleared. / Kartu dikosongkan.";window.scrollTo(0,0);
   });
@@ -402,12 +451,14 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var st=$("status");
     if(!SEND_URL){st.textContent="Sending is not set up yet. / Pengiriman belum diatur.";return}
     if(!$("name").value.trim()){st.textContent="Please type your name first. / Isi nama dulu.";$("name").focus();return}
+    var stuMode=document.body.classList.contains("student"),code=$("code").value.trim();
+    if(stuMode&&code.length<4){st.textContent="Choose a secret code of at least 4 characters. / Pilih kode rahasia minimal 4 karakter.";$("code").focus();return}
     var has=rows.some(function(r){return r.s||r.m});
     if(!has){st.textContent="Add at least one score first. / Isi minimal satu nilai.";return}
     var miss=rows.some(function(r,i){return (r.s||r.m||(r.e&&r.e.trim())||pics[i].length)&&!r.c.trim()});
     if(miss){st.textContent="Type a criterion name for every row that has a score. / Isi nama kriteria untuk setiap baris yang sudah diberi nilai.";return}
     if(sending||sentOK)return;sending=true;st.textContent="Sending... / Mengirim...";
-    var body={token:SEND_TOKEN,name:$("name").value.trim(),date:$("date").value,week:$("week").value,focus:$("focus").value.trim(),
+    var body={token:SEND_TOKEN,code:code,name:$("name").value.trim(),date:$("date").value,week:$("week").value,focus:$("focus").value.trim(),
       rows:rows.map(function(r,i){return {c:r.c,s:r.s,m:r.m,e:(r.e||"").trim(),img:pics[i]}}).filter(function(r){return r.c||r.s||r.m||r.e||r.img.length}),r1:$("r1").value.trim(),r2:$("r2").value.trim(),r3:$("r3").value.trim(),r4:$("r4").value.trim()};
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
       .then(function(){sending=false;sentOK=true;var sb=$("send");sb.disabled=true;sb.textContent="Sent / Terkirim \u2713";$("done").hidden=false;st.textContent="";$("done").scrollIntoView({block:"nearest"})})
