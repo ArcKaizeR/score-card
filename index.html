@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Score Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one narrow column, a navy header, one card per criterion, a live summary at the end. */
+:root{
+  --bg:#f4f6fa; --card:#ffffff; --ink:#14213d; --muted:#5c6370; --line:#d5dae6;
+  --gold:#fca311; --self:#2a9d8f; --mentor:#3a86ff; --warn:#e76f51; --head:#14213d; --headink:#ffffff;
+  --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1424; --card:#161e33; --ink:#eef1f8; --muted:#9aa6c0; --line:#2b3654;
+    --self:#46c2b3; --mentor:#6aa3ff; --warn:#f08a6e; --head:#0a0f1d; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1424; --card:#161e33; --ink:#eef1f8; --muted:#9aa6c0; --line:#2b3654;
+  --self:#46c2b3; --mentor:#6aa3ff; --warn:#f08a6e; --head:#0a0f1d; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px 48px}
+header{background:var(--head);color:var(--headink);border-bottom:4px solid var(--gold)}
+header .in{max-width:720px;margin:0 auto;padding:28px 16px 22px}
+header h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+header .id{color:var(--gold);font-weight:700;font-size:17px;margin-top:2px}
+header p{margin:10px 0 0;color:#c9d1e3;font-size:14px}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:28px 0 10px;color:var(--muted);font-weight:800}
+h2 span{font-weight:600;text-transform:none;letter-spacing:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grid .wide{grid-column:span 4}
+@media (max-width:560px){.grid{grid-template-columns:1fr 1fr}.grid .wide{grid-column:span 2}.grid .name{grid-column:span 2}
+.grid>div{min-width:0}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:42px;text-align:left}
+input[type=number]{min-height:42px}
+.saved{display:grid;gap:8px;margin-top:4px}
+.sv{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}
+.sv div{min-width:0}.sv b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv small{color:var(--muted)}
+.sv .a{display:flex;gap:6px;flex:none}
+.sv button{font:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:7px 11px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.empty{color:var(--muted);font-size:13px}}
+.grid .name{grid-column:span 2}
+.grid>div{min-width:0}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:42px;text-align:left}
+input[type=number]{min-height:42px}
+.saved{display:grid;gap:8px;margin-top:4px}
+.sv{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}
+.sv div{min-width:0}.sv b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sv small{color:var(--muted)}
+.sv .a{display:flex;gap:6px;flex:none}
+.sv button{font:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:7px 11px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+.empty{color:var(--muted);font-size:13px}
+label.f{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
+label.f i{font-weight:400}
+input[type=text],input[type=date],input[type=number],textarea,select{
+  width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:10px;padding:9px 11px}
+textarea{min-height:68px;resize:vertical}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.crit{margin-bottom:12px}
+.crit .top{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+.num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--head);color:#fff;font-weight:800;display:grid;place-items:center;font-size:13px}
+.rows{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}
+@media (max-width:560px){.rows{grid-template-columns:1fr 1fr}.rows .gapbox{grid-column:span 2}}
+.seg{display:flex;gap:6px}
+.seg button{flex:1;min-width:0;height:40px;border-radius:10px;border:1.5px solid var(--c);background:transparent;color:var(--c);font:inherit;font-weight:800;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--c);color:#fff}
+.seg.self{--c:var(--self)} .seg.mentor{--c:var(--mentor)}
+.gapbox{min-width:84px}
+.gap{height:40px;border-radius:10px;border:1.5px solid var(--gold);display:grid;place-items:center;font-weight:800;font-variant-numeric:tabular-nums}
+.scale{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:560px){.scale{grid-template-columns:1fr 1fr}}
+.scale div{border-radius:12px;padding:10px 12px;color:#fff;font-size:13px;font-weight:700}
+.scale b{font-size:20px;margin-right:6px}
+.scale small{display:block;font-weight:400;font-style:italic;opacity:.95}
+.s1{background:#d9573b}.s2{background:#b87400}.s3{background:#1f8578}.s4{background:#2f6fd6}
+.verdict{margin-top:10px;padding:14px 16px;border-radius:12px;background:var(--head);color:#fff}
+.verdict b{color:var(--gold)}
+.verdict small{display:block;color:#c9d1e3;font-style:italic;margin-top:2px}
+.reflect .q{margin-bottom:12px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+button.act{font:inherit;font-weight:800;border-radius:10px;padding:12px 18px;cursor:pointer;border:1.5px solid var(--ink);background:transparent;color:var(--ink)}
+button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
+#status{margin-top:8px;font-size:13px;color:var(--muted);min-height:20px}
+#summary{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;min-height:200px;white-space:pre-wrap}
+.how{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.how li{display:flex;gap:10px}
+.how b{flex:none;width:24px;height:24px;border-radius:50%;background:var(--gold);color:#14213d;display:grid;place-items:center;font-size:12px}
+.how em{display:block;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header><div class="in">
+  <h1>Online Score Card</h1>
+  <div class="id">Kartu Skor Online</div>
+  <p>Self-score first, then mentor. Copy the result and send it on Telegram.<br>Nilai diri dulu, lalu mentor. Salin hasilnya dan kirim lewat Telegram.</p>
+</div></header>
+
+<main class="wrap">
+
+<h2>How it works <span>/ Cara pakai</span></h2>
+<div class="card"><ol class="how">
+  <li><b>1</b><div>Student fills in the details and Self scores, then the reflection.<em>Siswa mengisi data, nilai Diri, lalu refleksi.</em></div></li>
+  <li><b>2</b><div>Mentor adds the Mentor scores, live on a call or from the sent result.<em>Mentor menambahkan nilai Mentor, saat panggilan atau dari hasil yang dikirim.</em></div></li>
+  <li><b>3</b><div>Press Copy result and paste it into Telegram. Log it in the tracker sheet.<em>Tekan Salin hasil dan tempel ke Telegram. Catat di lembar pelacak.</em></div></li>
+</ol></div>
+
+<h2>Details <span>/ Data</span></h2>
+<div class="card grid">
+  <div class="name"><label class="f" for="name">Name <i>/ Nama</i></label><input type="text" id="name" autocomplete="name"></div>
+  <div><label class="f" for="date">Date <i>/ Tanggal</i></label><input type="date" id="date"></div>
+  <div><label class="f" for="week">Week <i>/ Minggu</i></label><input type="number" id="week" min="1" max="12" inputmode="numeric" placeholder="1-12"></div>
+  <div class="wide"><label class="f" for="focus">Focus criterion <i>/ Kriteria fokus</i></label><input type="text" id="focus"></div>
+</div>
+
+<h2>Scale <span>/ Skala</span></h2>
+<div class="scale">
+  <div class="s1"><b>1</b>Starting<small>Mulai</small></div>
+  <div class="s2"><b>2</b>Developing<small>Berkembang</small></div>
+  <div class="s3"><b>3</b>Proficient<small>Cakap</small></div>
+  <div class="s4"><b>4</b>Excellent<small>Unggul</small></div>
+</div>
+
+<h2>Scores <span>/ Nilai</span></h2>
+<div id="crits"></div>
+<div class="verdict" id="verdict"></div>
+
+<h2>Reflect <span>/ Refleksi</span></h2>
+<div class="card reflect">
+  <div class="q"><label class="f" for="r1">Why did I give myself these scores? <i>/ Mengapa aku memberi nilai ini?</i></label><textarea id="r1"></textarea></div>
+  <div class="q"><label class="f" for="r2">One thing I did well <i>/ Satu hal yang sudah kulakukan dengan baik</i></label><textarea id="r2"></textarea></div>
+  <div class="q"><label class="f" for="r3">One thing to improve next week <i>/ Satu hal yang akan kuperbaiki minggu depan</i></label><textarea id="r3"></textarea></div>
+  <div class="q"><label class="f" for="r4">My next drill <i>/ Latihan berikutnya</i></label><textarea id="r4"></textarea></div>
+</div>
+
+<h2>Result <span>/ Hasil</span></h2>
+<div class="card">
+  <textarea id="summary" readonly aria-label="Result text"></textarea>
+  <div class="btns">
+    <button class="act primary" id="save" type="button">Save / Simpan</button>
+    <button class="act" id="reset" type="button">Exit / Reset</button>
+  </div>
+  <div id="status" role="status"></div>
+</div>
+
+<h2>Saved cards <span>/ Kartu tersimpan</span></h2>
+<div class="saved" id="saved"></div>
+
+</main>
+
+<script>
+(function(){
+  var N=5, KEY="score-card-draft";
+  var rows=[];
+  for(var i=0;i<N;i++) rows.push({c:"",s:0,m:0});
+  var $=function(id){return document.getElementById(id)};
+  var fields=["name","date","week","focus","r1","r2","r3","r4"];
+
+  function today(){var d=new Date();var m=("0"+(d.getMonth()+1)).slice(-2),dd=("0"+d.getDate()).slice(-2);return d.getFullYear()+"-"+m+"-"+dd}
+
+  function build(){
+    var h="";
+    for(var i=0;i<N;i++){
+      h+='<div class="card crit" data-i="'+i+'">'+
+        '<div class="top"><span class="num">'+(i+1)+'</span>'+
+        '<div style="flex:1"><label class="f" for="c'+i+'">Criterion <i>/ Kriteria</i></label>'+
+        '<input type="text" id="c'+i+'" data-k="c"></div></div>'+
+        '<div class="rows">'+
+        '<div><label class="f">Self <i>/ Diri</i></label><div class="seg self" data-k="s">'+btns("s",i)+'</div></div>'+
+        '<div><label class="f">Mentor</label><div class="seg mentor" data-k="m">'+btns("m",i)+'</div></div>'+
+        '<div class="gapbox"><label class="f">Gap <i>/ Selisih</i></label><div class="gap" id="g'+i+'">-</div></div>'+
+        '</div></div>';
+    }
+    $("crits").innerHTML=h;
+  }
+  function btns(k,i){var s="";for(var v=1;v<=4;v++){s+='<button type="button" data-v="'+v+'" aria-pressed="false" aria-label="'+(k==="s"?"Self":"Mentor")+' score '+v+', criterion '+(i+1)+'">'+v+'</button>'}return s}
+
+  function fmt(n){return (n>0?"+":"")+n}
+  function gaps(){
+    var sum=0,cnt=0;
+    for(var i=0;i<N;i++){
+      var r=rows[i],g=$("g"+i);
+      if(r.s&&r.m){var d=r.m-r.s;g.textContent=fmt(d);sum+=d;cnt++}else{g.textContent="-"}
+    }
+    return cnt?{avg:sum/cnt,cnt:cnt}:null;
+  }
+  function verdict(g){
+    var v=$("verdict");
+    if(!g){v.innerHTML='<b>Gap</b><small>Add Self and Mentor scores to see the gap. / Isi nilai Diri dan Mentor untuk melihat selisih.</small>';return}
+    var a=Math.round(g.avg*10)/10, en, id;
+    if(Math.abs(g.avg)<0.5){en="In sync: you see yourself clearly.";id="Selaras: kamu menilai diri dengan tepat."}
+    else if(g.avg>0){en="Mentor scores higher: you may be underrating yourself.";id="Nilai mentor lebih tinggi: kamu mungkin meremehkan diri."}
+    else{en="Mentor scores lower: look for a blind spot.";id="Nilai mentor lebih rendah: cari titik butanya."}
+    v.innerHTML='<b>Average gap '+fmt(a)+'</b> ('+g.cnt+' criteria)<br>'+en+'<small>'+id+'</small>';
+  }
+  function text(){
+    var g=gaps();verdict(g);
+    var L=[];
+    L.push("SCORE CARD / KARTU SKOR");
+    L.push("Name: "+($("name").value||"-"));
+    L.push("Date: "+($("date").value||"-")+"   Week: "+($("week").value||"-"));
+    L.push("Focus: "+($("focus").value||"-"));
+    L.push("");
+    L.push("Criterion | Self | Mentor | Gap");
+    for(var i=0;i<N;i++){
+      var r=rows[i]; if(!r.c&&!r.s&&!r.m) continue;
+      L.push((r.c||("Criterion "+(i+1)))+" | "+(r.s||"-")+" | "+(r.m||"-")+" | "+((r.s&&r.m)?fmt(r.m-r.s):"-"));
+    }
+    if(g) L.push("Average gap: "+fmt(Math.round(g.avg*10)/10));
+    L.push("");
+    var q=[["Why these scores","r1"],["Did well","r2"],["Improve next week","r3"],["Next drill","r4"]];
+    q.forEach(function(p){var v=$(p[1]).value.trim();if(v) L.push(p[0]+": "+v)});
+    return L.join("\n");
+  }
+  function paint(){
+    for(var i=0;i<N;i++){
+      ["s","m"].forEach(function(k){
+        var box=document.querySelector('.crit[data-i="'+i+'"] .seg[data-k="'+k+'"]');
+        var bs=box.querySelectorAll("button");
+        for(var j=0;j<bs.length;j++) bs[j].setAttribute("aria-pressed",String(rows[i][k]===j+1));
+      });
+      var inp=$("c"+i); if(inp.value!==rows[i].c) inp.value=rows[i].c;
+    }
+    $("summary").value=text();
+  }
+  function save(){
+    try{
+      var o={rows:rows};fields.forEach(function(f){o[f]=$(f).value});
+      localStorage.setItem(KEY,JSON.stringify(o));
+    }catch(e){}
+  }
+  function load(){
+    try{
+      var o=JSON.parse(localStorage.getItem(KEY)||"null");
+      if(o&&o.rows&&o.rows.length===N){rows=o.rows;fields.forEach(function(f){if(o[f]!=null)$(f).value=o[f]})}
+    }catch(e){}
+  }
+  function update(){paint();save()}
+
+  build();load();
+  if(!$("date").value) $("date").value=today();
+  update();
+
+  $("crits").addEventListener("click",function(e){
+    var b=e.target.closest("button[data-v]");if(!b)return;
+    var card=b.closest(".crit"),i=+card.getAttribute("data-i"),k=b.parentNode.getAttribute("data-k"),v=+b.getAttribute("data-v");
+    rows[i][k]=rows[i][k]===v?0:v;update();
+  });
+  $("crits").addEventListener("input",function(e){
+    var t=e.target;if(t.getAttribute("data-k")!=="c")return;
+    rows[+t.closest(".crit").getAttribute("data-i")].c=t.value;update();
+  });
+  fields.forEach(function(f){$(f).addEventListener("input",update)});
+
+  var SKEY="score-card-saved";
+  function getSaved(){try{return JSON.parse(localStorage.getItem(SKEY)||"[]")}catch(e){return []}}
+  function putSaved(a){try{localStorage.setItem(SKEY,JSON.stringify(a));return true}catch(e){return false}}
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+  function renderSaved(){
+    var a=getSaved(),box=$("saved");
+    if(!a.length){box.innerHTML='<div class="empty">Nothing saved yet. / Belum ada yang tersimpan.</div>';return}
+    box.innerHTML=a.map(function(x){
+      return '<div class="sv"><div><b>'+esc(x.name||"No name")+'</b><small>'+esc(x.date||"-")+' | Week '+esc(x.week||"-")+'</small></div>'+
+        '<div class="a"><button type="button" data-open="'+x.id+'">Open</button><button type="button" data-del="'+x.id+'">Delete</button></div></div>';
+    }).join("");
+  }
+  function copyText(t,done,fail){
+    var tmp=document.createElement("textarea");tmp.value=t;tmp.setAttribute("readonly","");tmp.style.position="fixed";tmp.style.opacity="0";
+    var run=function(){document.body.appendChild(tmp);tmp.select();var ok=false;try{ok=document.execCommand("copy")}catch(e){}document.body.removeChild(tmp);ok?done():fail()};
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,run)}else{run()}}catch(e){run()}
+  }
+  $("save").addEventListener("click",function(){
+    var st=$("status"),t=text(),o={id:Date.now(),name:$("name").value.trim(),date:$("date").value,week:$("week").value,rows:JSON.parse(JSON.stringify(rows)),t:t};
+    fields.forEach(function(f){o[f]=$(f).value});
+    var a=getSaved();a.unshift(o);a=a.slice(0,30);
+    var ok=putSaved(a);renderSaved();
+    var msg=ok?"Saved on this device. ":"Could not save on this device. ";
+    copyText(t,function(){st.textContent=msg+"Result copied: paste it into Telegram. / "+(ok?"Tersimpan. ":"Gagal menyimpan. ")+"Hasil tersalin: tempel ke Telegram."},
+                function(){st.textContent=msg+"Select the result text above and copy it. / Salin manual: pilih teks hasil di atas."});
+  });
+  $("saved").addEventListener("click",function(e){
+    var o=e.target.getAttribute("data-open"),d=e.target.getAttribute("data-del"),a=getSaved();
+    if(o){
+      var x=a.filter(function(r){return String(r.id)===o})[0];if(!x)return;
+      rows=x.rows;fields.forEach(function(f){$(f).value=x[f]!=null?x[f]:""});update();
+      $("status").textContent="Card opened. / Kartu dibuka.";window.scrollTo(0,0);
+    }else if(d){
+      putSaved(a.filter(function(r){return String(r.id)!==d}));renderSaved();
+    }
+  });
+  var armed=false,label="Exit / Reset";
+  $("reset").addEventListener("click",function(){
+    var b=$("reset");
+    if(!armed){armed=true;b.textContent="Tap again to clear / Ketuk lagi";setTimeout(function(){armed=false;b.textContent=label},4000);return}
+    armed=false;b.textContent=label;
+    rows=[];for(var i=0;i<N;i++)rows.push({c:"",s:0,m:0});
+    fields.forEach(function(f){$(f).value=""});$("date").value=today();
+    update();$("status").textContent="Card cleared. / Kartu dikosongkan.";window.scrollTo(0,0);
+  });
+  renderSaved();
+})();
+</script>
+</body>
+</html>
