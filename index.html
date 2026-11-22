@@ -82,10 +82,12 @@ body:not(.student) .sonly{display:none!important}
 .fbitem small{display:block;color:var(--muted);margin:2px 0 6px}
 .fbitem .wait{color:var(--muted);font-style:italic}
 .fbitem .msg{white-space:pre-wrap}
-.fbtabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;border-bottom:1.5px solid var(--line);padding-bottom:8px}
-.fbtab{font:inherit;font-weight:800;font-size:13px;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
-.fbtab[aria-selected="true"]{background:var(--gold);border-color:var(--gold);color:#14213d}
-.fbtab:focus-visible{outline:2px solid var(--mentor);outline-offset:2px}
+.fbbox2{margin-top:12px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12);background:var(--card);border:1px solid var(--line)}
+.fbtabs{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;background:var(--mentor);padding:8px 12px 0}
+.fbtab{font:inherit;font-weight:800;font-size:14px;padding:10px 16px 8px;border:0;border-bottom:4px solid #1d4ed8;background:transparent;color:#fff;cursor:pointer;margin-bottom:8px}
+.fbtab[aria-selected="true"]{background:#fff;color:var(--mentor);border-bottom-color:#7db3ff;margin-bottom:0;padding-bottom:12px}
+.fbtab:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.fbpane{padding:4px 14px 14px}
 .fbwk{border:1.5px solid var(--line);border-radius:12px;margin-top:10px;padding:2px 12px}
 .fbwk>summary{cursor:pointer;font-weight:800;padding:10px 0}
 .fbwk>summary small{color:var(--muted);font-weight:600;margin-left:6px}
@@ -419,7 +421,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
           t.textContent=mo?"Month "+mo+" / Bulan "+mo:"Other / Lainnya";
           t.addEventListener("click",function(){show(i)});
           bar.appendChild(t);tabs.push(t);
-          var pane=document.createElement("div");pane.setAttribute("role","tabpanel");
+          var pane=document.createElement("div");pane.className="fbpane";pane.setAttribute("role","tabpanel");
           var wks=Object.keys(months[mo]).map(Number).sort(function(x,y){return x-y});
           wks.forEach(function(w,wi){
             var det=document.createElement("details");det.className="fbwk";
@@ -443,8 +445,10 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
           });
           panes.push(pane);
         });
-        out.appendChild(bar);
-        panes.forEach(function(p){out.appendChild(p)});
+        var wrap=document.createElement("div");wrap.className="fbbox2";
+        wrap.appendChild(bar);
+        panes.forEach(function(p){wrap.appendChild(p)});
+        out.appendChild(wrap);
         show(order.length-1); /* open on the newest month */
       })
       .catch(function(){st.textContent="Could not check right now. Try again later. / Gagal memeriksa. Coba lagi nanti."});
