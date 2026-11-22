@@ -82,6 +82,14 @@ body:not(.student) .sonly{display:none!important}
 .fbitem small{display:block;color:var(--muted);margin:2px 0 6px}
 .fbitem .wait{color:var(--muted);font-style:italic}
 .fbitem .msg{white-space:pre-wrap}
+.fbtabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;border-bottom:1.5px solid var(--line);padding-bottom:8px}
+.fbtab{font:inherit;font-weight:800;font-size:13px;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.fbtab[aria-selected="true"]{background:var(--gold);border-color:var(--gold);color:#14213d}
+.fbtab:focus-visible{outline:2px solid var(--mentor);outline-offset:2px}
+.fbwk{border:1.5px solid var(--line);border-radius:12px;margin-top:10px;padding:2px 12px}
+.fbwk>summary{cursor:pointer;font-weight:800;padding:10px 0}
+.fbwk>summary small{color:var(--muted);font-weight:600;margin-left:6px}
+.fbwk .fbitem{margin:0 0 10px}
 .why{margin-top:12px}
 .why textarea{min-height:56px}
 .pics{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
@@ -392,14 +400,52 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         if(d.locked){st.textContent="Too many tries. Please wait 15 minutes. / Terlalu banyak percobaan. Tunggu 15 menit.";return}
         if(!d.rows||!d.rows.length){st.textContent="Nothing found. Check your name and code, or send a card first. / Tidak ditemukan. Periksa nama dan kodemu, atau kirim kartu dulu.";return}
         st.textContent="";
+        /* Group: Month tab (weeks 1-4 = Month 1, weeks 5-8 = Month 2, ...) > Week section > criterion items */
+        var months={},order=[];
         d.rows.forEach(function(r){
-          var box=document.createElement("div");box.className="fbitem";
-          var h=document.createElement("b");h.textContent="Week "+(r.week||"-")+" \u00b7 "+(r.criterion||"-");
-          var sm=document.createElement("small");sm.textContent="Self "+(r.self||"-")+" | Mentor "+(r.mentor||"-")+" | Gap "+(r.gap===""||r.gap==null?"-":r.gap)+" | "+(r.date||"");
-          var m=document.createElement("div");
-          if(r.feedback){m.className="msg";m.textContent=r.feedback}else{m.className="wait";m.textContent="Waiting for your mentor. / Menunggu mentor."}
-          box.appendChild(h);box.appendChild(sm);box.appendChild(m);out.appendChild(box);
+          var w=parseInt(r.week,10),mo=w>0?Math.ceil(w/4):0;
+          if(!months[mo]){months[mo]={};order.push(mo)}
+          var key=w>0?w:0;
+          (months[mo][key]=months[mo][key]||[]).push(r);
         });
+        order.sort(function(x,y){return (x||99)-(y||99)});
+        var bar=document.createElement("div");bar.className="fbtabs";bar.setAttribute("role","tablist");
+        var panes=[],tabs=[];
+        function show(i){
+          tabs.forEach(function(t,j){t.setAttribute("aria-selected",j===i?"true":"false");panes[j].hidden=j!==i});
+        }
+        order.forEach(function(mo,i){
+          var t=document.createElement("button");t.type="button";t.className="fbtab";t.setAttribute("role","tab");
+          t.textContent=mo?"Month "+mo+" / Bulan "+mo:"Other / Lainnya";
+          t.addEventListener("click",function(){show(i)});
+          bar.appendChild(t);tabs.push(t);
+          var pane=document.createElement("div");pane.setAttribute("role","tabpanel");
+          var wks=Object.keys(months[mo]).map(Number).sort(function(x,y){return x-y});
+          wks.forEach(function(w,wi){
+            var det=document.createElement("details");det.className="fbwk";
+            if(wi===wks.length-1)det.open=true; /* latest week open, older weeks collapsed */
+            var sum=document.createElement("summary");
+            var rows=months[mo][w];
+            var done=rows.filter(function(r){return r.feedback}).length;
+            sum.textContent=(w?"Week "+w:"No week / Tanpa minggu");
+            var sg=document.createElement("small");
+            sg.textContent=done+"/"+rows.length+(done===rows.length?" \u2713":" \u00b7 waiting for mentor / menunggu mentor");
+            sum.appendChild(sg);det.appendChild(sum);
+            rows.forEach(function(r){
+              var box=document.createElement("div");box.className="fbitem";
+              var h=document.createElement("b");h.textContent=r.criterion||"-";
+              var sm=document.createElement("small");sm.textContent="Self "+(r.self||"-")+" | Mentor "+(r.mentor||"-")+" | Gap "+(r.gap===""||r.gap==null?"-":r.gap)+" | "+(r.date||"");
+              var m=document.createElement("div");
+              if(r.feedback){m.className="msg";m.textContent=r.feedback}else{m.className="wait";m.textContent="Waiting for your mentor. / Menunggu mentor."}
+              box.appendChild(h);box.appendChild(sm);box.appendChild(m);det.appendChild(box);
+            });
+            pane.appendChild(det);
+          });
+          panes.push(pane);
+        });
+        out.appendChild(bar);
+        panes.forEach(function(p){out.appendChild(p)});
+        show(order.length-1); /* open on the newest month */
       })
       .catch(function(){st.textContent="Could not check right now. Try again later. / Gagal memeriksa. Coba lagi nanti."});
   });
