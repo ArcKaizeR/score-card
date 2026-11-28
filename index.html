@@ -537,7 +537,9 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     });
     card.appendChild(g);
     var pv=document.createElement("div");pv.className="pv hint";pv.style.cssText="margin-top:8px;font-weight:700";card.appendChild(pv);
-    card.addEventListener("input",function(){tlPreview(card)});card.addEventListener("change",function(){tlPreview(card)});
+    card.addEventListener("input",function(){tlPreview(card)});
+    card.addEventListener("change",function(){tlSync(card);tlPreview(card)});
+    tlSync(card);
     return card;
   }
   function tlCalc(dir,o){
@@ -557,6 +559,13 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     pv.textContent=r?("Auto: Planned R:R to TP1 "+(r.plan===""?"-":r.plan)+" | Max R "+(r.maxR===""?"-":r.maxR)+" | Realized R "+(r.real===""?"-":r.real)+" | R left "+(r.left===""?"-":r.left)+" | Highest TP "+r.reached+" | Hit 1:1 "+(r.hit||"-")):"Auto: fill Entry price, SL and Best price (and choose Buy or Sell). / Otomatis: isi harga entry, SL, dan harga terbaik (dan pilih Buy atau Sell).";
   }
   $("tldir").addEventListener("change",function(){$("tlentries").querySelectorAll(".tlentry").forEach(tlPreview)});
+  function tlSync(card){
+    var res=card.querySelector('[data-k="result"]'),mv=card.querySelector('[data-k="slmoved"]'),ef=card.querySelector('[data-k="sleffect"]');
+    if(res.value==="SL+")mv.value="Yes";                       // SL+ always means the SL was moved
+    var show=mv.value==="Yes",box=ef.parentNode;
+    box.style.display=show?"":"none";
+    if(!show)ef.value="";
+  }
   function tlRenumber(){
     var cards=$("tlentries").querySelectorAll(".tlentry");
     cards.forEach(function(c,i){
@@ -704,6 +713,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       if(r.real>r.maxR+1e-9){st.textContent=nm+"Close price cannot be better than Best price reached. / Harga saat ditutup tidak bisa lebih baik dari harga terbaik yang tercapai.";return}
       if(e.result==="TP"&&r.real<=0){st.textContent=nm+"Closed by TP but the close price is not in profit. Check the prices. / Ditutup TP tetapi harga tutup tidak profit. Periksa harganya.";return}
       if(e.result==="SL"&&r.real>0){st.textContent=nm+"Closed by SL but the close price is in profit. Use SL+ if you moved your SL. / Ditutup SL tetapi harga tutup profit. Pakai SL+ jika SL digeser.";return}
+      if(e.slmoved==="Yes"&&!e.sleffect){st.textContent=nm+"Choose the SL+ effect (Helped, Hurt or Neutral). / Pilih efek SL+ (Menolong, Merugikan, atau Netral).";return}
       if(e.result==="SL+"&&e.slmoved!=="Yes"){st.textContent=nm+"SL+ means you moved your SL, so set SL+ moved to Yes. / SL+ berarti SL digeser, jadi isi SL+ digeser = Yes.";return}
     }
     if(!tlPics.length){st.textContent="Add at least 1 chart screenshot. / Tambahkan minimal 1 screenshot chart.";return}
