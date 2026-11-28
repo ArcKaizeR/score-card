@@ -193,7 +193,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     <div><label class="f" for="tlrule">Rule broken? <i>/ Aturan dilanggar?</i></label><select id="tlrule"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
     <div class="wide"><label class="f">Entries <i>/ Entry</i></label>
       <div class="hint" style="margin:0 0 6px">Write prices as on the chart, not the word "entry". Each entry has its own lot, SL, TP1 to TP3 and its own result, because averaging entries often close differently. Press + for each averaging. / Tulis harga seperti di chart, bukan tulisan "entry". Tiap entry punya lot, SL, TP1 sampai TP3, dan hasilnya sendiri, karena entry averaging sering tertutup berbeda. Tekan + untuk tiap averaging.</div>
-      <div class="hint" style="margin:0 0 6px"><b>Closed by</b> = how this entry actually ended: TP (hit a target), SL (stopped out at the original SL), SL+ (stopped out after you moved SL to entry or into profit), Manual close (you closed it yourself). / Cara entry ini benar-benar berakhir: TP (kena target), SL (kena SL awal), SL+ (kena SL setelah digeser ke entry atau profit), Manual close (kamu tutup sendiri).<br><b>Best price reached</b> = the best price the market touched in your favour while this entry was open (highest for Buy, lowest for Sell), even if it came back later. If it never moved in your favour, write the entry price. The form then works out Max R, the highest TP reached and Hit 1:1 by itself. / Harga terbaik yang disentuh market searah posisimu selama entry ini terbuka (tertinggi untuk Buy, terendah untuk Sell), walau harga kemudian berbalik. Jika tidak pernah searah, tulis harga entry. Form menghitung sendiri Max R, TP tertinggi, dan Hit 1:1.</div>
+      <div class="hint" style="margin:0 0 6px"><b>Closed by</b> = how this entry actually ended: TP (hit a target), SL (stopped out at the original SL), SL+ (stopped out after you moved SL to entry or into profit), Manual close (you closed it yourself). / Cara entry ini benar-benar berakhir: TP (kena target), SL (kena SL awal), SL+ (kena SL setelah digeser ke entry atau profit), Manual close (kamu tutup sendiri).<br><b>Best price reached</b> = the best price the market touched in your favour while this entry was open (highest for Buy, lowest for Sell), even if it came back later. If it never moved in your favour, write the entry price. The form then works out Max R, the highest TP reached and Hit 1:1 by itself. / Harga terbaik yang disentuh market searah posisimu selama entry ini terbuka (tertinggi untuk Buy, terendah untuk Sell), walau harga kemudian berbalik. Jika tidak pernah searah, tulis harga entry. Form menghitung sendiri Max R, TP tertinggi, dan Hit 1:1.<br><b>Close price</b> = the price where this entry was really closed (the SL, the TP, or the price of your manual close). The form works out Realized R and R left on table (Max R minus Realized R). / Harga tempat entry ini benar-benar tertutup (SL, TP, atau harga tutup manual). Form menghitung R yang didapat dan R yang tertinggal (Max R dikurangi R yang didapat).</div>
       <div id="tlentries"></div>
       <button class="act" id="tlplus" type="button" style="margin-top:8px">+ Add averaging entry / Tambah entry averaging</button>
     </div>
@@ -510,6 +510,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     {k:"sl",en:"SL price",id:"Harga SL",ph:"3610"},{k:"tp1",en:"TP1 price",id:"Harga TP1",ph:"3590"},
     {k:"tp2",en:"TP2 price (optional)",id:"Harga TP2 (opsional)",ph:"3580"},{k:"tp3",en:"TP3 price (optional)",id:"Harga TP3 (opsional)",ph:"3570"},
     {k:"best",en:"Best price reached",id:"Harga terbaik yang tercapai",ph:"3578"},
+    {k:"close",en:"Close price",id:"Harga saat ditutup",ph:"3590"},
     {k:"result",en:"Closed by",id:"Ditutup oleh",o:[["TP","TP"],["SL","SL"],["SL+","SL+"],["Manual close","Manual close / Tutup manual"]]},
     {k:"slmoved",en:"SL+ moved?",id:"SL+ digeser?",o:YN},
     {k:"sleffect",en:"SL+ effect",id:"Efek SL+",o:[["Helped","Helped / Menolong"],["Hurt","Hurt / Merugikan"],["Neutral","Neutral / Netral"]]}
@@ -541,12 +542,15 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var sg=dir==="Sell"?-1:1,risk=Math.abs(p-sl),fav=Math.max(0,(b-p)*sg),r={reached:"None",hit:"",maxR:""};
     if(!isNaN(sl)&&risk>0){r.hit=fav>=risk-1e-9?"Yes":"No";r.maxR=Math.round(fav/risk*100)/100}
     ["tp1","tp2","tp3"].forEach(function(k,i){var t=parseFloat(o[k]);if(!isNaN(t)&&(b-t)*sg>=-1e-9)r.reached="TP"+(i+1)});
+    var cl=parseFloat(o.close);r.real="";r.left="";
+    if(!isNaN(cl)&&risk>0){r.real=Math.round((cl-p)*sg/risk*100)/100;r.left=Math.round(Math.max(0,r.maxR-r.real)*100)/100}
+    var t1=parseFloat(o.tp1);r.plan=(!isNaN(t1)&&risk>0)?Math.round(Math.abs(t1-p)/risk*100)/100:"";
     return r;
   }
   function tlPreview(card){
     var o={};card.querySelectorAll("[data-k]").forEach(function(x){o[x.getAttribute("data-k")]=x.value.trim()});
     var r=tlCalc($("tldir").value,o),pv=card.querySelector(".pv");
-    pv.textContent=r?("Auto: Max R "+(r.maxR===""?"-":r.maxR)+" | Highest TP "+r.reached+" | Hit 1:1 "+(r.hit||"-")):"Auto: fill Entry price, SL and Best price (and choose Buy or Sell). / Otomatis: isi harga entry, SL, dan harga terbaik (dan pilih Buy atau Sell).";
+    pv.textContent=r?("Auto: Planned R:R to TP1 "+(r.plan===""?"-":r.plan)+" | Max R "+(r.maxR===""?"-":r.maxR)+" | Realized R "+(r.real===""?"-":r.real)+" | R left "+(r.left===""?"-":r.left)+" | Highest TP "+r.reached+" | Hit 1:1 "+(r.hit||"-")):"Auto: fill Entry price, SL and Best price (and choose Buy or Sell). / Otomatis: isi harga entry, SL, dan harga terbaik (dan pilih Buy atau Sell).";
   }
   $("tldir").addEventListener("change",function(){$("tlentries").querySelectorAll(".tlentry").forEach(tlPreview)});
   function tlRenumber(){
@@ -587,12 +591,14 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       var bar=el("rect",{x:x,y:y(r.maxr),width:bw,height:h,rx:2,fill:TLCOL[r.result]||"#7c8aa0"});
       bar.appendChild(el("title",{},r.date+" Trade "+r.trade+" Entry "+r.n+": Max R "+r.maxr+", closed by "+r.result));
       svg.appendChild(bar);
+      if(typeof r.real==="number"&&r.real>=0){svg.appendChild(el("line",{x1:x-2,x2:x+bw+2,y1:y(Math.min(r.real,top)),y2:y(Math.min(r.real,top)),stroke:"currentColor","stroke-width":2.5}))}
+      else if(typeof r.real==="number"){svg.appendChild(el("text",{x:x+bw/2,y:y(0)+8,"text-anchor":"middle","font-size":"8",fill:"#d64545"},r.real))}
       svg.appendChild(el("text",{x:x+bw/2,y:H-12,"text-anchor":"middle","font-size":"8",fill:"currentColor"},r.trade+"."+r.n));
     });
     var head=document.createElement("b");head.textContent="Max R per entry / Max R tiap entry";head.style.cssText="display:block;margin:12px 0 4px";
     var leg=document.createElement("div");leg.className="hint";leg.style.margin="0 0 4px";
     Object.keys(TLCOL).forEach(function(k){var sp=document.createElement("span");sp.style.cssText="display:inline-block;margin-right:10px";var dot=document.createElement("span");dot.style.cssText="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:"+TLCOL[k];sp.appendChild(dot);sp.appendChild(document.createTextNode(k));leg.appendChild(sp)});
-    var note=document.createElement("div");note.className="hint";note.textContent="Bar = how far price went in your favour (in R). Dashed line = 1R. Label = trade.entry. A tall bar closed by SL+ or Manual close means you may be leaving profit behind. / Batang = sejauh apa harga bergerak searah posisimu (dalam R). Garis putus-putus = 1R. Label = trade.entry. Batang tinggi yang ditutup SL+ atau Manual close artinya mungkin ada profit yang tertinggal.";
+    var note=document.createElement("div");note.className="hint";note.textContent="Bar = how far price went in your favour (in R). Black line = the R you actually took (Realized R); the gap between the line and the top of the bar is R left on the table. Dashed line = 1R. Label = trade.entry. A tall bar closed by SL+ or Manual close means you may be leaving profit behind. / Batang = sejauh apa harga bergerak searah posisimu (dalam R). Garis tebal = R yang benar-benar kamu ambil (Realized R); jarak antara garis dan puncak batang = R yang tertinggal. Garis putus-putus = 1R. Label = trade.entry. Batang tinggi yang ditutup SL+ atau Manual close artinya mungkin ada profit yang tertinggal.";
     box.appendChild(head);box.appendChild(leg);box.appendChild(svg);box.appendChild(note);
   }
   function tlLoad(done){
@@ -610,7 +616,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         [[s.trades,"Trades / Jumlah trade"],[s.entries,"Entries / Jumlah entry"],[s.trades?(Math.round(10*s.entries/s.trades)/10):"-","Entries per trade / Entry per trade"],
          [s.lot,"Total lot"],[s.hit,"Hit 1:1 / Kena 1:1"],[rate,"Hit rate / Persentase"],
          [s.tp1,"TP1 or more / TP1 atau lebih"],[s.tp2,"TP2 or more / TP2 atau lebih"],[s.tp3,"TP3 reached / TP3 tercapai"],
-         [s.avgR==null?"-":s.avgR,"Average Max R / Rata-rata Max R"],[s.r2,"Max R 2 or more / Max R 2 atau lebih"],[s.slmoved,"SL+ moved / SL+ digeser"],[s.helped+" / "+s.hurt,"SL+ helped / hurt / menolong / merugikan"],[s.rule,"Rule broken / Aturan dilanggar"]].forEach(function(x){
+         [s.avgR==null?"-":s.avgR,"Average Max R / Rata-rata Max R"],[s.r2,"Max R 2 or more / Max R 2 atau lebih"],[s.avgReal==null?"-":s.avgReal,"Average Realized R / Rata-rata R didapat"],[s.avgLeft==null?"-":s.avgLeft,"Average R left / Rata-rata R tertinggal"],[s.slmoved,"SL+ moved / SL+ digeser"],[s.helped+" / "+s.hurt,"SL+ helped / hurt / menolong / merugikan"],[s.rule,"Rule broken / Aturan dilanggar"]].forEach(function(x){
           var b=document.createElement("div"),v=document.createElement("b"),l=document.createElement("small");
           v.textContent=x[0];l.textContent=x[1];b.appendChild(v);b.appendChild(l);sum.appendChild(b);
         });
@@ -626,7 +632,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
           box.appendChild(del);box.appendChild(h);
           g.forEach(function(r){
             var sm=document.createElement("small");
-            sm.textContent="Entry "+r.n+": "+(r.lot===""?"":r.lot+" lot @ ")+r.p+" | SL "+f_(r.sl)+" | TP1 "+f_(r.tp1)+(r.tp2!==""?" | TP2 "+r.tp2:"")+(r.tp3!==""?" | TP3 "+r.tp3:"")+" | best "+f_(r.best)+" (Max R "+f_(r.maxr)+") \u2192 closed by "+f_(r.result)+", reached "+f_(r.reached)+" | 1:1 "+f_(r.hit)+" | SL+ "+f_(r.slmoved)+(r.sleffect?" ("+r.sleffect+")":"");
+            sm.textContent="Entry "+r.n+": "+(r.lot===""?"":r.lot+" lot @ ")+r.p+" | SL "+f_(r.sl)+" | TP1 "+f_(r.tp1)+(r.tp2!==""?" | TP2 "+r.tp2:"")+(r.tp3!==""?" | TP3 "+r.tp3:"")+" | best "+f_(r.best)+" (Max R "+f_(r.maxr)+"), close "+f_(r.close)+" (Realized R "+f_(r.real)+", left "+f_(r.left)+") \u2192 closed by "+f_(r.result)+", reached "+f_(r.reached)+" | 1:1 "+f_(r.hit)+" | SL+ "+f_(r.slmoved)+(r.sleffect?" ("+r.sleffect+")":"");
             box.appendChild(sm);
           });
           var extra=(f.rule?"Rule broken: "+f.rule:"");
@@ -653,7 +659,16 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(!n||c.length<4){st.textContent="Type your name and your secret code (min. 4). / Isi nama dan kode rahasia (min. 4).";return}
     var es=tlEntries();
     if(!$("tldate").value||!$("tldir").value||!es.length){st.textContent="Please fill date, Buy or Sell and the entry price. / Isi tanggal, Buy atau Sell, dan harga entry.";return}
-    for(var i=0;i<es.length;i++){if(!es[i].result||es[i].best===""||es[i].sl===""){st.textContent="Each entry needs SL, Best price reached and Closed by. / Tiap entry perlu SL, Harga terbaik yang tercapai, dan Closed by.";return}}
+    for(var i=0;i<es.length;i++){
+      var e=es[i],nm="Entry "+(i+1)+": ";
+      if(!e.result||e.best===""||e.sl===""||e.close===""){st.textContent=nm+"needs SL, Best price reached, Close price and Closed by. / perlu SL, Harga terbaik, Harga saat ditutup, dan Closed by.";return}
+      var r=tlCalc($("tldir").value,e);
+      if(r.maxR===""){st.textContent=nm+"SL must be different from the entry price. / SL harus berbeda dari harga entry.";return}
+      if(r.real>r.maxR+1e-9){st.textContent=nm+"Close price cannot be better than Best price reached. / Harga saat ditutup tidak bisa lebih baik dari harga terbaik yang tercapai.";return}
+      if(e.result==="TP"&&r.real<=0){st.textContent=nm+"Closed by TP but the close price is not in profit. Check the prices. / Ditutup TP tetapi harga tutup tidak profit. Periksa harganya.";return}
+      if(e.result==="SL"&&r.real>0){st.textContent=nm+"Closed by SL but the close price is in profit. Use SL+ if you moved your SL. / Ditutup SL tetapi harga tutup profit. Pakai SL+ jika SL digeser.";return}
+      if(e.result==="SL+"&&e.slmoved!=="Yes"){st.textContent=nm+"SL+ means you moved your SL, so set SL+ moved to Yes. / SL+ berarti SL digeser, jadi isi SL+ digeser = Yes.";return}
+    }
     if(!SEND_URL){st.textContent="Sending is not set up yet. / Pengiriman belum diatur.";return}
     tlBusy=true;$("tladd").disabled=true;st.textContent="Sending... / Mengirim...";
     var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,rule:$("tlrule").value,note:$("tlnote").value.trim(),entries:es};
