@@ -197,6 +197,10 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       <div id="tlentries"></div>
       <button class="act" id="tlplus" type="button" style="margin-top:8px">+ Add averaging entry / Tambah entry averaging</button>
     </div>
+    <div class="wide"><label class="f">Chart screenshots <i>/ Screenshot chart</i></label>
+      <div class="hint" style="margin:0 0 6px">Add 1 to 3 screenshots of this trade. They must show your entry, SL, TP and where it closed, so your mentor can check the prices. / Tambah 1 sampai 3 screenshot trade ini. Harus terlihat entry, SL, TP, dan tempat tertutupnya, supaya mentor bisa memeriksa harganya.</div>
+      <div class="pics"><label class="add"><input type="file" accept="image/*" multiple id="tlpicin"><span>+ Screenshot</span></label><span id="tlthumbs" style="display:contents"></span></div>
+    </div>
     <div class="wide"><label class="f" for="tlnote">One line <i>/ Satu baris</i></label><textarea id="tlnote" maxlength="600" placeholder="I planned X. I did Y. Reason changed: ___ / Saya merencanakan X. Saya melakukan Y. Alasan berubah: ___"></textarea></div>
   </div>
   <div class="btns"><button class="act primary" id="tladd" type="button">Add trade / Tambah trade</button><button class="act" id="tlshow" type="button">Show my log / Lihat catatanku</button></div>
@@ -575,6 +579,39 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var r=tlRow();$("tlentries").appendChild(r);tlRenumber();r.querySelector("input").focus();
   });
   function f_(v){return v===""||v==null?"-":v}
+  var tlPics=[],TLMAXPIC=3;
+  function tlDrawPics(){
+    var box=$("tlthumbs");box.innerHTML="";
+    tlPics.forEach(function(u,k){
+      var d=document.createElement("div");d.className="thumb";
+      var im=document.createElement("img");im.src=u;im.alt="Screenshot "+(k+1);
+      var b=document.createElement("button");b.type="button";b.textContent="\u00d7";b.setAttribute("aria-label","Remove screenshot / Hapus screenshot");
+      b.addEventListener("click",function(){tlPics.splice(k,1);tlDrawPics()});
+      d.appendChild(im);d.appendChild(b);box.appendChild(d);
+    });
+  }
+  $("tlpicin").addEventListener("change",function(e){
+    var st=$("tlstatus");
+    Array.prototype.forEach.call(e.target.files,function(file){
+      if(!/^image\//.test(file.type)){st.textContent="That file is not a picture. / Itu bukan gambar.";return}
+      if(tlPics.length>=TLMAXPIC){st.textContent="Maximum 3 screenshots per trade. / Maksimal 3 screenshot per trade.";return}
+      var fr=new FileReader();
+      fr.onload=function(){
+        var im=new Image();
+        im.onload=function(){
+          var M=1280,sc=Math.min(1,M/Math.max(im.width,im.height)),c=document.createElement("canvas");
+          c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+          var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);
+          if(tlPics.length>=TLMAXPIC)return;
+          tlPics.push(c.toDataURL("image/jpeg",0.75));tlDrawPics();st.textContent="Screenshot added. / Screenshot ditambahkan.";
+        };
+        im.onerror=function(){st.textContent="Could not read that picture. / Gambar tidak bisa dibaca."};
+        im.src=fr.result;
+      };
+      fr.readAsDataURL(file);
+    });
+    e.target.value="";
+  });
   var TLCOL={"TP":"#2e9d57","SL":"#d64545","SL+":"#e0a030","Manual close":"#7c8aa0"};
   function tlChart(rows){
     var box=$("tlchart");box.innerHTML="";
@@ -626,7 +663,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         groups.reverse().forEach(function(g){
           var f=g[0],lots=0;g.forEach(function(r){if(typeof r.lot==="number")lots+=r.lot});
           var box=document.createElement("div");box.className="fbitem";
-          var h=document.createElement("b");h.textContent=(f.date||"")+" \u00b7 Week "+f_(f.week)+" \u00b7 Trade "+f_(f.trade)+" \u00b7 "+f_(f.dir)+" \u00b7 "+(Math.round(lots*100)/100)+" lot";
+          var h=document.createElement("b");h.textContent=(f.date||"")+" \u00b7 Week "+f_(f.week)+" \u00b7 Trade "+f_(f.trade)+" \u00b7 "+f_(f.dir)+" \u00b7 "+(Math.round(lots*100)/100)+" lot"+(f.pics?" \u00b7 "+f.pics+" screenshot"+(f.pics>1?"s":""):"");
           var del=document.createElement("button");del.type="button";del.className="rm";del.textContent="Delete trade / Hapus trade";del.style.cssText="float:right;margin-left:8px";
           del.addEventListener("click",function(){tlDelete(f.date,f.trade)});
           box.appendChild(del);box.appendChild(h);
@@ -669,12 +706,13 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       if(e.result==="SL"&&r.real>0){st.textContent=nm+"Closed by SL but the close price is in profit. Use SL+ if you moved your SL. / Ditutup SL tetapi harga tutup profit. Pakai SL+ jika SL digeser.";return}
       if(e.result==="SL+"&&e.slmoved!=="Yes"){st.textContent=nm+"SL+ means you moved your SL, so set SL+ moved to Yes. / SL+ berarti SL digeser, jadi isi SL+ digeser = Yes.";return}
     }
+    if(!tlPics.length){st.textContent="Add at least 1 chart screenshot. / Tambahkan minimal 1 screenshot chart.";return}
     if(!SEND_URL){st.textContent="Sending is not set up yet. / Pengiriman belum diatur.";return}
     tlBusy=true;$("tladd").disabled=true;st.textContent="Sending... / Mengirim...";
-    var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,rule:$("tlrule").value,note:$("tlnote").value.trim(),entries:es};
+    var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,rule:$("tlrule").value,note:$("tlnote").value.trim(),img:tlPics.slice(),entries:es};
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
       .then(function(){
-        ["tldir","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();
+        ["tldir","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();tlPics=[];tlDrawPics();
         st.textContent="Sent. Checking your log... / Terkirim. Memeriksa catatanmu...";
         setTimeout(function(){tlBusy=false;$("tladd").disabled=false;tlLoad(true)},2000);
       })
