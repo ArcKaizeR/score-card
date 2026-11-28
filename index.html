@@ -82,6 +82,10 @@ body:not(.student) .sonly{display:none!important}
 .fbitem small{display:block;color:var(--muted);margin:2px 0 6px}
 .fbitem .wait{color:var(--muted);font-style:italic}
 .fbitem .msg{white-space:pre-wrap}
+.tlsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.tlsum div{border:1.5px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center}
+.tlsum b{display:block;font-size:20px}
+.tlsum small{color:var(--muted);font-size:11px;line-height:1.2;display:block}
 .fbbox2{margin-top:14px}
 .fbtabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid var(--line)}
 .fbtab{font:inherit;font-weight:800;font-size:14px;padding:10px 16px;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;background:transparent;color:var(--muted);cursor:pointer;border-radius:8px 8px 0 0}
@@ -166,6 +170,33 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <div class="btns"><button class="act primary" id="fbgo" type="button">Check / Cek</button></div>
   <div id="fbstatus" class="empty" role="status" style="margin-top:8px"></div>
   <div id="fbout"></div>
+</details>
+
+<h2 class="sonly">Trade Log <span>/ Catatan Trade</span></h2>
+<details class="card sonly" id="tlbox">
+  <summary style="cursor:pointer;font-weight:800">Open / Buka</summary>
+  <p class="empty" style="margin:10px 0">Add one row per trade. Use the same name and secret code as your card. / Tambah satu baris per trade. Pakai nama dan kode rahasia yang sama dengan kartumu.</p>
+  <div class="grid">
+    <div class="wide"><label class="f" for="tlname">Name <i>/ Nama</i></label><input type="text" id="tlname" autocomplete="name"></div>
+    <div class="wide"><label class="f" for="tlcode">Secret code <i>/ Kode rahasia</i></label><input type="text" id="tlcode" autocomplete="off" maxlength="20"></div>
+    <div><label class="f" for="tldate">Date <i>/ Tanggal</i></label><input type="date" id="tldate"></div>
+    <div><label class="f" for="tlweek">Week <i>/ Minggu</i></label><input type="number" id="tlweek" min="1" max="12" inputmode="numeric" placeholder="1-12"></div>
+    <div><label class="f" for="tldir">Buy or Sell <i>/ Arah</i></label><select id="tldir"><option value="">-</option><option value="Buy">Buy</option><option value="Sell">Sell</option></select></div>
+    <div><label class="f" for="tlresult">Result <i>/ Hasil</i></label><select id="tlresult"><option value="">-</option><option value="TP">TP</option><option value="SL">SL</option><option value="SL+">SL+</option><option value="Manual close">Manual close / Tutup manual</option></select></div>
+    <div><label class="f" for="tlentry">Entry</label><input type="number" id="tlentry" step="any" inputmode="decimal"></div>
+    <div><label class="f" for="tlsl">SL</label><input type="number" id="tlsl" step="any" inputmode="decimal"></div>
+    <div><label class="f" for="tltp">TP</label><input type="number" id="tltp" step="any" inputmode="decimal"></div>
+    <div><label class="f" for="tlavg">Averaging steps <i>/ Jumlah averaging</i></label><input type="number" id="tlavg" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+    <div><label class="f" for="tlhit">Hit 1:1? <i>/ Kena 1:1?</i></label><select id="tlhit"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
+    <div><label class="f" for="tlmoved">SL+ moved? <i>/ SL+ digeser?</i></label><select id="tlmoved"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
+    <div><label class="f" for="tleffect">SL+ effect <i>/ Efek SL+</i></label><select id="tleffect"><option value="">-</option><option value="Helped">Helped / Menolong</option><option value="Hurt">Hurt / Merugikan</option><option value="Neutral">Neutral / Netral</option></select></div>
+    <div><label class="f" for="tlrule">Rule broken? <i>/ Aturan dilanggar?</i></label><select id="tlrule"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
+    <div class="wide"><label class="f" for="tlnote">One line <i>/ Satu baris</i></label><textarea id="tlnote" maxlength="600" placeholder="I planned X. I did Y. Reason changed: ___ / Saya merencanakan X. Saya melakukan Y. Alasan berubah: ___"></textarea></div>
+  </div>
+  <div class="btns"><button class="act primary" id="tladd" type="button">Add trade / Tambah trade</button><button class="act" id="tlshow" type="button">Show my log / Lihat catatanku</button></div>
+  <div id="tlstatus" class="empty" role="status" style="margin-top:8px"></div>
+  <div id="tlsum"></div>
+  <div id="tlout"></div>
 </details>
 
 <h2 class="monly">Mentor <span>/ Mentor</span></h2>
@@ -455,6 +486,64 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         show(order.length-1); /* open on the newest month */
       })
       .catch(function(){st.textContent="Could not check right now. Try again later. / Gagal memeriksa. Coba lagi nanti."});
+  });
+
+
+  /* Trade Log: students add trades (name + secret code) and read their own log + summary */
+  $("tlbox").addEventListener("toggle",function(){
+    if(!$("tlbox").open)return;
+    if(!$("tlname").value)$("tlname").value=$("name").value||$("fbname").value;
+    if(!$("tlcode").value)$("tlcode").value=$("code").value||$("fbcode").value;
+    if(!$("tldate").value){var t=new Date();$("tldate").value=t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2)}
+    if(!$("tlweek").value)$("tlweek").value=$("week").value;
+  });
+  function tlLoad(done){
+    var st=$("tlstatus"),n=$("tlname").value.trim(),c=$("tlcode").value.trim();
+    if(!n||c.length<4){st.textContent="Type your name and your secret code. / Isi nama dan kode rahasiamu.";return}
+    fetch(SEND_URL+"?action=trades&name="+encodeURIComponent(n)+"&code="+encodeURIComponent(c))
+      .then(function(r){return r.json()})
+      .then(function(d){
+        var out=$("tlout"),sum=$("tlsum");out.innerHTML="";sum.innerHTML="";
+        if(d.locked){st.textContent="Too many tries. Please wait 15 minutes. / Terlalu banyak percobaan. Tunggu 15 menit.";return}
+        if(!d.rows||!d.rows.length){st.textContent=done?"Not seen yet. Wait a few seconds and press Show my log. / Belum terlihat. Tunggu beberapa detik lalu tekan Lihat catatanku.":"No trades found. Check your name and code. / Belum ada trade. Periksa nama dan kodemu.";return}
+        st.textContent=done?"Added \u2713 / Tersimpan \u2713":"";
+        var s=d.summary||{},rate=s.trades?Math.round(100*s.hit/s.trades)+"%":"-";
+        [[s.trades,"Trades / Jumlah trade"],[s.hit+" ("+rate+")","Hit 1:1 / Kena 1:1"],[s.rule,"Rule broken / Aturan dilanggar"],
+         [s.slmoved,"SL+ moved / SL+ digeser"],[s.helped+" / "+s.hurt,"SL+ helped / hurt / menolong / merugikan"],[s.avg==null?"-":s.avg,"Avg averaging / Rata-rata averaging"]].forEach(function(x,i){
+          if(i===0){sum.className="tlsum"}
+          var b=document.createElement("div"),v=document.createElement("b"),l=document.createElement("small");
+          v.textContent=x[0];l.textContent=x[1];b.appendChild(v);b.appendChild(l);sum.appendChild(b);
+        });
+        d.rows.slice().reverse().forEach(function(r){
+          var box=document.createElement("div");box.className="fbitem";
+          var h=document.createElement("b");h.textContent=(r.date||"")+" \u00b7 Week "+(r.week||"-")+" \u00b7 "+(r.dir||"-")+" \u00b7 "+(r.result||"-");
+          var sm=document.createElement("small");
+          sm.textContent="Entry "+(r.entry===""?"-":r.entry)+" | SL "+(r.sl===""?"-":r.sl)+" | TP "+(r.tp===""?"-":r.tp)+" | 1:1 "+(r.hit||"-")+" | SL+ "+(r.slmoved||"-")+(r.sleffect?" ("+r.sleffect+")":"")+" | Avg "+(r.avg===""?"-":r.avg)+" | Rule broken "+(r.rule||"-");
+          box.appendChild(h);box.appendChild(sm);
+          if(r.note){var m=document.createElement("div");m.className="msg";m.textContent=r.note;box.appendChild(m)}
+          out.appendChild(box);
+        });
+      })
+      .catch(function(){st.textContent="Could not check right now. Try again later. / Gagal memeriksa. Coba lagi nanti."});
+  }
+  $("tlshow").addEventListener("click",function(){tlLoad(false)});
+  var tlBusy=false;
+  $("tladd").addEventListener("click",function(){
+    var st=$("tlstatus"),n=$("tlname").value.trim(),c=$("tlcode").value.trim();
+    if(tlBusy)return;
+    if(!n||c.length<4){st.textContent="Type your name and your secret code (min. 4). / Isi nama dan kode rahasia (min. 4).";return}
+    if(!$("tldate").value||!$("tldir").value||!$("tlresult").value){st.textContent="Please choose date, Buy or Sell, and Result. / Pilih tanggal, Buy atau Sell, dan Hasil.";return}
+    if(!SEND_URL){st.textContent="Sending is not set up yet. / Pengiriman belum diatur.";return}
+    tlBusy=true;$("tladd").disabled=true;st.textContent="Sending... / Mengirim...";
+    var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,entry:$("tlentry").value,sl:$("tlsl").value,tp:$("tltp").value,
+      result:$("tlresult").value,hit:$("tlhit").value,slmoved:$("tlmoved").value,sleffect:$("tleffect").value,avg:$("tlavg").value,rule:$("tlrule").value,note:$("tlnote").value.trim()};
+    fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
+      .then(function(){
+        ["tldir","tlresult","tlentry","tlsl","tltp","tlavg","tlhit","tlmoved","tleffect","tlrule","tlnote"].forEach(function(id){$(id).value=""});
+        st.textContent="Sent. Checking your log... / Terkirim. Memeriksa catatanmu...";
+        setTimeout(function(){tlBusy=false;$("tladd").disabled=false;tlLoad(true)},2000);
+      })
+      .catch(function(){tlBusy=false;$("tladd").disabled=false;st.textContent="Could not send. Check your connection and try again. / Gagal mengirim. Periksa koneksi lalu coba lagi."});
   });
 
   var SKEY="score-card-saved";
