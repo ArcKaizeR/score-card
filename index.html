@@ -202,6 +202,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   <div class="btns"><button class="act primary" id="tladd" type="button">Add trade / Tambah trade</button><button class="act" id="tlshow" type="button">Show my log / Lihat catatanku</button></div>
   <div id="tlstatus" class="empty" role="status" style="margin-top:8px"></div>
   <div id="tlsum"></div>
+  <div id="tlchart"></div>
   <div id="tlout"></div>
 </details>
 
@@ -570,6 +571,30 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var r=tlRow();$("tlentries").appendChild(r);tlRenumber();r.querySelector("input").focus();
   });
   function f_(v){return v===""||v==null?"-":v}
+  var TLCOL={"TP":"#2e9d57","SL":"#d64545","SL+":"#e0a030","Manual close":"#7c8aa0"};
+  function tlChart(rows){
+    var box=$("tlchart");box.innerHTML="";
+    var pts=rows.filter(function(r){return typeof r.maxr==="number"}).slice(-24);
+    if(!pts.length)return;
+    var W=400,H=190,L=30,B=26,T=14,top=Math.max(3,Math.ceil(Math.max.apply(null,pts.map(function(r){return r.maxr}))));
+    var bw=Math.min(24,(W-L-6)/pts.length*0.7),gap=(W-L-6)/pts.length,NS="http://www.w3.org/2000/svg";
+    function el(n,a,t){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;return e}
+    var svg=el("svg",{viewBox:"0 0 "+W+" "+H,width:"100%",role:"img","aria-label":"Max R per entry"});
+    function y(v){return T+(H-T-B)*(1-v/top)}
+    for(var g=0;g<=top;g++){svg.appendChild(el("line",{x1:L,x2:W,y1:y(g),y2:y(g),stroke:"currentColor","stroke-opacity":g===1?"0.7":"0.15","stroke-dasharray":g===1?"4 3":"0"}));svg.appendChild(el("text",{x:L-4,y:y(g)+3,"text-anchor":"end","font-size":"9",fill:"currentColor"},g+"R"))}
+    pts.forEach(function(r,i){
+      var x=L+i*gap+(gap-bw)/2,h=Math.max(1.5,y(0)-y(r.maxr));
+      var bar=el("rect",{x:x,y:y(r.maxr),width:bw,height:h,rx:2,fill:TLCOL[r.result]||"#7c8aa0"});
+      bar.appendChild(el("title",{},r.date+" Trade "+r.trade+" Entry "+r.n+": Max R "+r.maxr+", closed by "+r.result));
+      svg.appendChild(bar);
+      svg.appendChild(el("text",{x:x+bw/2,y:H-12,"text-anchor":"middle","font-size":"8",fill:"currentColor"},r.trade+"."+r.n));
+    });
+    var head=document.createElement("b");head.textContent="Max R per entry / Max R tiap entry";head.style.cssText="display:block;margin:12px 0 4px";
+    var leg=document.createElement("div");leg.className="hint";leg.style.margin="0 0 4px";
+    Object.keys(TLCOL).forEach(function(k){var sp=document.createElement("span");sp.style.cssText="display:inline-block;margin-right:10px";var dot=document.createElement("span");dot.style.cssText="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:"+TLCOL[k];sp.appendChild(dot);sp.appendChild(document.createTextNode(k));leg.appendChild(sp)});
+    var note=document.createElement("div");note.className="hint";note.textContent="Bar = how far price went in your favour (in R). Dashed line = 1R. Label = trade.entry. A tall bar closed by SL+ or Manual close means you may be leaving profit behind. / Batang = sejauh apa harga bergerak searah posisimu (dalam R). Garis putus-putus = 1R. Label = trade.entry. Batang tinggi yang ditutup SL+ atau Manual close artinya mungkin ada profit yang tertinggal.";
+    box.appendChild(head);box.appendChild(leg);box.appendChild(svg);box.appendChild(note);
+  }
   function tlLoad(done){
     var st=$("tlstatus"),n=$("tlname").value.trim(),c=$("tlcode").value.trim();
     if(!n||c.length<4){st.textContent="Type your name and your secret code. / Isi nama dan kode rahasiamu.";return}
@@ -585,10 +610,11 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
         [[s.trades,"Trades / Jumlah trade"],[s.entries,"Entries / Jumlah entry"],[s.trades?(Math.round(10*s.entries/s.trades)/10):"-","Entries per trade / Entry per trade"],
          [s.lot,"Total lot"],[s.hit,"Hit 1:1 / Kena 1:1"],[rate,"Hit rate / Persentase"],
          [s.tp1,"TP1 or more / TP1 atau lebih"],[s.tp2,"TP2 or more / TP2 atau lebih"],[s.tp3,"TP3 reached / TP3 tercapai"],
-         [s.slmoved,"SL+ moved / SL+ digeser"],[s.helped+" / "+s.hurt,"SL+ helped / hurt / menolong / merugikan"],[s.rule,"Rule broken / Aturan dilanggar"]].forEach(function(x){
+         [s.avgR==null?"-":s.avgR,"Average Max R / Rata-rata Max R"],[s.r2,"Max R 2 or more / Max R 2 atau lebih"],[s.slmoved,"SL+ moved / SL+ digeser"],[s.helped+" / "+s.hurt,"SL+ helped / hurt / menolong / merugikan"],[s.rule,"Rule broken / Aturan dilanggar"]].forEach(function(x){
           var b=document.createElement("div"),v=document.createElement("b"),l=document.createElement("small");
           v.textContent=x[0];l.textContent=x[1];b.appendChild(v);b.appendChild(l);sum.appendChild(b);
         });
+        tlChart(d.rows);
         var groups=[],idx={};
         d.rows.forEach(function(r){var k=r.date+"|"+r.trade;if(!(k in idx)){idx[k]=groups.length;groups.push([])}groups[idx[k]].push(r)});
         groups.reverse().forEach(function(g){
