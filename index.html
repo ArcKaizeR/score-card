@@ -82,6 +82,14 @@ body:not(.student) .sonly{display:none!important}
 .fbitem small{display:block;color:var(--muted);margin:2px 0 6px}
 .fbitem .wait{color:var(--muted);font-style:italic}
 .fbitem .msg{white-space:pre-wrap}
+#tlbox label.f i{display:block}
+#tlbox label.f{line-height:1.25}
+.tlentry{border:1.5px solid var(--line);border-radius:12px;padding:10px;margin-top:8px}
+.tlentry .th{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.tlentry .th b{font-size:14px}
+.tlentry .tg{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.tlentry .tg>div{min-width:0}
+.tlentry .rm{font:inherit;font-size:13px;font-weight:700;border-radius:8px;padding:5px 12px;border:1.5px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer;white-space:nowrap}
 .tlsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .tlsum div{border:1.5px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center}
 .tlsum b{display:block;font-size:20px}
@@ -183,13 +191,11 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     <div><label class="f" for="tlweek">Week <i>/ Minggu</i></label><input type="number" id="tlweek" min="1" max="12" inputmode="numeric" placeholder="1-12"></div>
     <div><label class="f" for="tldir">Buy or Sell <i>/ Arah</i></label><select id="tldir"><option value="">-</option><option value="Buy">Buy</option><option value="Sell">Sell</option></select></div>
     <div><label class="f" for="tlresult">Result <i>/ Hasil</i></label><select id="tlresult"><option value="">-</option><option value="TP">TP</option><option value="SL">SL</option><option value="SL+">SL+</option><option value="Manual close">Manual close / Tutup manual</option></select></div>
-    <div class="wide"><label class="f">Entry price <i>/ Harga posisi entry</i></label>
-      <div class="hint" style="margin:0 0 6px">Write the price where your position opened, not the word "entry". Press + for each averaging. / Tulis harga tempat posisimu dibuka, bukan tulisan "entry". Tekan + untuk tiap averaging.</div>
+    <div class="wide"><label class="f">Entries <i>/ Entry</i></label>
+      <div class="hint" style="margin:0 0 6px">Write prices as on the chart, not the word "entry". Each entry has its own SL, TP1 and TP2. Press + for each averaging. / Tulis harga seperti di chart, bukan tulisan "entry". Tiap entry punya SL, TP1, dan TP2 sendiri. Tekan + untuk tiap averaging.</div>
       <div id="tlentries"></div>
-      <button class="act" id="tlplus" type="button" style="margin-top:6px">+ Add averaging entry / Tambah entry averaging</button>
+      <button class="act" id="tlplus" type="button" style="margin-top:8px">+ Add averaging entry / Tambah entry averaging</button>
     </div>
-    <div><label class="f" for="tlsl">SL price <i>/ Harga SL</i></label><input type="number" id="tlsl" step="any" inputmode="decimal" placeholder="e.g. 3610 / mis. 3610"></div>
-    <div><label class="f" for="tltp">TP price <i>/ Harga TP</i></label><input type="number" id="tltp" step="any" inputmode="decimal" placeholder="e.g. 3590 / mis. 3590"></div>
     <div><label class="f" for="tlhit">Hit 1:1? <i>/ Kena 1:1?</i></label><select id="tlhit"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
     <div><label class="f" for="tlmoved">SL+ moved? <i>/ SL+ digeser?</i></label><select id="tlmoved"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
     <div><label class="f" for="tleffect">SL+ effect <i>/ Efek SL+</i></label><select id="tleffect"><option value="">-</option><option value="Helped">Helped / Menolong</option><option value="Hurt">Hurt / Merugikan</option><option value="Neutral">Neutral / Netral</option></select></div>
@@ -500,28 +506,41 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(!$("tldate").value){var t=new Date();$("tldate").value=t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2)}
     if(!$("tlweek").value)$("tlweek").value=$("week").value;
   });
-  var TLMAX=8;
-  function tlRow(i){
-    var row=document.createElement("div");row.className="tlentry";row.style.cssText="display:flex;gap:8px;align-items:center;margin-top:6px";
-    var inp=document.createElement("input");inp.type="number";inp.step="any";inp.setAttribute("inputmode","decimal");
-    inp.placeholder=i===0?"Entry 1 \u00b7 e.g. 3600.5 / mis. 3600.5":"Averaging "+i+" \u00b7 price / harga";
-    inp.setAttribute("aria-label",i===0?"Entry 1 price":"Averaging "+i+" price");
-    row.appendChild(inp);
-    if(i>0){var x=document.createElement("button");x.type="button";x.className="act";x.textContent="\u2212";x.setAttribute("aria-label","Remove averaging "+i);x.style.cssText="flex:none;min-width:44px";
-      x.addEventListener("click",function(){row.remove();tlRenumber()});row.appendChild(x)}
-    return row;
+  var TLMAX=8,TLF=[["p","Entry price","Harga entry","3600.5"],["sl","SL price","Harga SL","3610"],["tp1","TP1 price","Harga TP1","3590"],["tp2","TP2 price (optional)","Harga TP2 (opsional)","3580"]];
+  function tlRow(){
+    var card=document.createElement("div");card.className="tlentry";
+    var th=document.createElement("div");th.className="th";
+    var t=document.createElement("b");th.appendChild(t);
+    var x=document.createElement("button");x.type="button";x.className="rm";x.textContent="\u2212 Hapus / Remove";x.addEventListener("click",function(){card.remove();tlRenumber()});th.appendChild(x);
+    card.appendChild(th);
+    var g=document.createElement("div");g.className="tg";
+    TLF.forEach(function(f){
+      var d=document.createElement("div"),l=document.createElement("label");l.className="f";
+      var i=document.createElement("i");i.textContent="/ "+f[2];l.appendChild(document.createTextNode(f[1]+" "));l.appendChild(i);
+      var inp=document.createElement("input");inp.type="number";inp.step="any";inp.setAttribute("inputmode","decimal");inp.placeholder=f[3];inp.setAttribute("data-k",f[0]);
+      d.appendChild(l);d.appendChild(inp);g.appendChild(d);
+    });
+    card.appendChild(g);return card;
   }
   function tlRenumber(){
-    var rows=$("tlentries").querySelectorAll(".tlentry input");
-    rows.forEach(function(inp,i){inp.placeholder=i===0?"Entry 1 \u00b7 e.g. 3600.5 / mis. 3600.5":"Averaging "+i+" \u00b7 price / harga";inp.setAttribute("aria-label",i===0?"Entry 1 price":"Averaging "+i+" price")});
-    $("tlplus").disabled=rows.length>=TLMAX;
+    var cards=$("tlentries").querySelectorAll(".tlentry");
+    cards.forEach(function(c,i){
+      c.querySelector(".th b").textContent=i===0?"Entry 1":"Averaging "+i;
+      c.querySelector(".rm").style.display=i===0?"none":"";
+      c.querySelectorAll("input").forEach(function(inp){inp.setAttribute("aria-label",(i===0?"Entry 1":"Averaging "+i)+" "+inp.getAttribute("data-k"))});
+    });
+    $("tlplus").disabled=cards.length>=TLMAX;
   }
-  function tlReset(){$("tlentries").innerHTML="";$("tlentries").appendChild(tlRow(0));tlRenumber()}
+  function tlReset(){$("tlentries").innerHTML="";$("tlentries").appendChild(tlRow());tlRenumber()}
+  function tlEntries(){
+    return Array.prototype.map.call($("tlentries").querySelectorAll(".tlentry"),function(c){
+      var o={};c.querySelectorAll("input").forEach(function(inp){o[inp.getAttribute("data-k")]=inp.value.trim()});return o;
+    }).filter(function(o){return o.p!==""});
+  }
   tlReset();
   $("tlplus").addEventListener("click",function(){
-    var n=$("tlentries").querySelectorAll(".tlentry").length;
-    if(n>=TLMAX)return;
-    var r=tlRow(n);$("tlentries").appendChild(r);tlRenumber();r.querySelector("input").focus();
+    if($("tlentries").querySelectorAll(".tlentry").length>=TLMAX)return;
+    var r=tlRow();$("tlentries").appendChild(r);tlRenumber();r.querySelector("input").focus();
   });
   function tlLoad(done){
     var st=$("tlstatus"),n=$("tlname").value.trim(),c=$("tlcode").value.trim();
@@ -544,7 +563,8 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
           var box=document.createElement("div");box.className="fbitem";
           var h=document.createElement("b");h.textContent=(r.date||"")+" \u00b7 Week "+(r.week||"-")+" \u00b7 "+(r.dir||"-")+" \u00b7 "+(r.result||"-");
           var sm=document.createElement("small");
-          sm.textContent="Entry "+(r.entry===""?"-":r.entry)+(r.avgprices?" | Averaging "+r.avgprices:"")+" | SL "+(r.sl===""?"-":r.sl)+" | TP "+(r.tp===""?"-":r.tp)+" | 1:1 "+(r.hit||"-")+" | SL+ "+(r.slmoved||"-")+(r.sleffect?" ("+r.sleffect+")":"")+" | Rule broken "+(r.rule||"-");
+          function f_(v){return v===""||v==null?"-":v}
+          sm.textContent="Entry "+f_(r.entry)+" (SL "+f_(r.sl)+", TP1 "+f_(r.tp1)+(r.tp2!==""&&r.tp2!=null?", TP2 "+r.tp2:"")+")"+(r.avgtext?" | Averaging: "+r.avgtext:"")+" | 1:1 "+(r.hit||"-")+" | SL+ "+(r.slmoved||"-")+(r.sleffect?" ("+r.sleffect+")":"")+" | Rule broken "+(r.rule||"-");
           box.appendChild(h);box.appendChild(sm);
           if(r.note){var m=document.createElement("div");m.className="msg";m.textContent=r.note;box.appendChild(m)}
           out.appendChild(box);
@@ -558,14 +578,14 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var st=$("tlstatus"),n=$("tlname").value.trim(),c=$("tlcode").value.trim();
     if(tlBusy)return;
     if(!n||c.length<4){st.textContent="Type your name and your secret code (min. 4). / Isi nama dan kode rahasia (min. 4).";return}
-    if(!$("tldate").value||!$("tldir").value||!$("tlresult").value){st.textContent="Please choose date, Buy or Sell, and Result. / Pilih tanggal, Buy atau Sell, dan Hasil.";return}
+    if(!$("tldate").value||!$("tldir").value||!$("tlresult").value||!tlEntries().length){st.textContent="Please fill date, Buy or Sell, Result and the entry price. / Isi tanggal, Buy atau Sell, Hasil, dan harga entry.";return}
     if(!SEND_URL){st.textContent="Sending is not set up yet. / Pengiriman belum diatur.";return}
     tlBusy=true;$("tladd").disabled=true;st.textContent="Sending... / Mengirim...";
-    var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,entries:Array.prototype.map.call($("tlentries").querySelectorAll(".tlentry input"),function(i){return i.value.trim()}).filter(function(v){return v!==""}),sl:$("tlsl").value,tp:$("tltp").value,
+    var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,entries:tlEntries(),
       result:$("tlresult").value,hit:$("tlhit").value,slmoved:$("tlmoved").value,sleffect:$("tleffect").value,rule:$("tlrule").value,note:$("tlnote").value.trim()};
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
       .then(function(){
-        ["tldir","tlresult","tlsl","tltp","tlhit","tlmoved","tleffect","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();
+        ["tldir","tlresult","tlhit","tlmoved","tleffect","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();
         st.textContent="Sent. Checking your log... / Terkirim. Memeriksa catatanmu...";
         setTimeout(function(){tlBusy=false;$("tladd").disabled=false;tlLoad(true)},2000);
       })
