@@ -201,7 +201,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       <div class="hint" style="margin:0 0 6px">Add 1 to 3 screenshots of this trade. They must show your entry, SL, TP and where it closed, so your mentor can check the prices. / Tambah 1 sampai 3 screenshot trade ini. Harus terlihat entry, SL, TP, dan tempat tertutupnya, supaya mentor bisa memeriksa harganya.</div>
       <div class="pics"><label class="add"><input type="file" accept="image/*" multiple id="tlpicin"><span>+ Screenshot</span></label><span id="tlthumbs" style="display:contents"></span></div>
     </div>
-    <div class="wide"><label class="f" for="tlnote">One line <i>/ Satu baris</i></label><textarea id="tlnote" maxlength="600" placeholder="I planned X. I did Y. Reason changed: ___ / Saya merencanakan X. Saya melakukan Y. Alasan berubah: ___"></textarea></div>
+    <div class="wide" id="tlnotebox" style="display:none"><label class="f" for="tlnote">One line <i>/ Satu baris</i></label><textarea id="tlnote" maxlength="600" placeholder="I planned X. I did Y. Reason changed: ___ / Saya merencanakan X. Saya melakukan Y. Alasan berubah: ___"></textarea></div>
   </div>
   <div class="btns"><button class="act primary" id="tladd" type="button">Add trade / Tambah trade</button><button class="act" id="tlshow" type="button">Show my log / Lihat catatanku</button></div>
   <div id="tlstatus" class="empty" role="status" style="margin-top:8px"></div>
@@ -523,7 +523,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var card=document.createElement("div");card.className="tlentry";
     var th=document.createElement("div");th.className="th";
     var t=document.createElement("b");th.appendChild(t);
-    var x=document.createElement("button");x.type="button";x.className="rm";x.textContent="\u2212 Hapus / Remove";x.addEventListener("click",function(){card.remove();tlRenumber()});th.appendChild(x);
+    var x=document.createElement("button");x.type="button";x.className="rm";x.textContent="\u2212 Hapus / Remove";x.addEventListener("click",function(){card.remove();tlRenumber();tlDraftSave()});th.appendChild(x);
     card.appendChild(th);
     var g=document.createElement("div");g.className="tg";
     TLF.forEach(function(f){
@@ -536,10 +536,19 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       inp.setAttribute("data-k",f.k);d.appendChild(l);d.appendChild(inp);g.appendChild(d);
     });
     card.appendChild(g);
+    var more=document.createElement("button");more.type="button";more.className="act";more.textContent="+ TP2 / TP3 (optional / opsional)";more.style.cssText="margin-top:8px";
+    more.addEventListener("click",function(){tlTp(card,true)});card.insertBefore(more,g.nextSibling);card._more=more;
+    var cp=document.createElement("button");cp.type="button";cp.className="rm";cp.textContent="Copy SL & TP from entry above / Salin SL & TP dari entry di atas";cp.style.cssText="margin-right:8px";
+    cp.addEventListener("click",function(){
+      var cards=Array.prototype.slice.call($("tlentries").querySelectorAll(".tlentry")),i=cards.indexOf(card);if(i<1)return;
+      var src=cards[i-1];["sl","tp1","tp2","tp3"].forEach(function(k){card.querySelector('[data-k="'+k+'"]').value=src.querySelector('[data-k="'+k+'"]').value});
+      tlTp(card,card.querySelector('[data-k="tp2"]').value!==""||card.querySelector('[data-k="tp3"]').value!=="");tlPreview(card);tlAuto(card);tlDraftSave();
+    });
+    th.insertBefore(cp,x);card._cp=cp;
     var pv=document.createElement("div");pv.className="pv hint";pv.style.cssText="margin-top:8px;font-weight:700";card.appendChild(pv);
-    card.addEventListener("input",function(){tlPreview(card)});
-    card.addEventListener("change",function(){tlSync(card);tlPreview(card)});
-    tlSync(card);
+    card.addEventListener("input",function(){tlAuto(card);tlPreview(card);tlDraftSave()});
+    card.addEventListener("change",function(e){if(e.target.getAttribute("data-k")==="result")e.target._auto=false;tlSync(card);tlPreview(card);tlDraftSave()});
+    tlTp(card,false);tlSync(card);
     return card;
   }
   function tlCalc(dir,o){
@@ -559,6 +568,22 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     pv.textContent=r?("Auto: Planned R:R to TP1 "+(r.plan===""?"-":r.plan)+" | Max R "+(r.maxR===""?"-":r.maxR)+" | Realized R "+(r.real===""?"-":r.real)+" | R left "+(r.left===""?"-":r.left)+" | Highest TP "+r.reached+" | Hit 1:1 "+(r.hit||"-")):"Auto: fill Entry price, SL and Best price (and choose Buy or Sell). / Otomatis: isi harga entry, SL, dan harga terbaik (dan pilih Buy atau Sell).";
   }
   $("tldir").addEventListener("change",function(){$("tlentries").querySelectorAll(".tlentry").forEach(tlPreview)});
+  function tlTp(card,show){
+    ["tp2","tp3"].forEach(function(k){card.querySelector('[data-k="'+k+'"]').parentNode.style.display=show?"":"none"});
+    card._more.style.display=show?"none":"";
+  }
+  function tlAuto(card){   // suggest Closed by from the close price; the student can still change it
+    var res=card.querySelector('[data-k="result"]');
+    if(res.value!==""&&!res._auto)return;
+    var c=parseFloat(card.querySelector('[data-k="close"]').value),sug="";
+    if(!isNaN(c)){
+      var sl=parseFloat(card.querySelector('[data-k="sl"]').value);
+      if(!isNaN(sl)&&Math.abs(c-sl)<1e-6)sug="SL";
+      ["tp1","tp2","tp3"].forEach(function(k){var t=parseFloat(card.querySelector('[data-k="'+k+'"]').value);if(!isNaN(t)&&Math.abs(c-t)<1e-6)sug="TP"});
+    }
+    if(sug){res.value=sug;res._auto=true}else if(res._auto){res.value="";res._auto=false}
+    tlSync(card);
+  }
   function tlSync(card){
     var res=card.querySelector('[data-k="result"]'),mv=card.querySelector('[data-k="slmoved"]'),ef=card.querySelector('[data-k="sleffect"]');
     if(res.value==="SL+")mv.value="Yes";                       // SL+ always means the SL was moved
@@ -570,7 +595,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var cards=$("tlentries").querySelectorAll(".tlentry");
     cards.forEach(function(c,i){
       c.querySelector(".th b").textContent=i===0?"Entry 1":"Averaging "+i;
-      c.querySelector(".rm").style.display=i===0?"none":"";
+      c.querySelector(".rm:last-child").style.display=i===0?"none":"";c._cp.style.display=i===0?"none":"";
       c.querySelectorAll("[data-k]").forEach(function(inp){inp.setAttribute("aria-label",(i===0?"Entry 1":"Averaging "+i)+" "+inp.getAttribute("data-k"))});
     });
     cards.forEach(tlPreview);
@@ -582,10 +607,39 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
       var o={};c.querySelectorAll("[data-k]").forEach(function(inp){o[inp.getAttribute("data-k")]=inp.value.trim()});return o;
     }).filter(function(o){return o.p!==""});
   }
-  tlReset();
+  function tlNoteVis(){var y=$("tlrule").value==="Yes";$("tlnotebox").style.display=y?"":"none";if(!y)$("tlnote").value=""}
+  $("tlrule").addEventListener("change",function(){tlNoteVis();tlDraftSave()});
+  /* Draft: kept on this device only (no name, code or screenshots) so a closed page does not lose the form */
+  var TLDK="score-card-tl-draft",tlDT=null;
+  function tlDraftSave(){
+    clearTimeout(tlDT);
+    tlDT=setTimeout(function(){
+      try{
+        var o={date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,rule:$("tlrule").value,note:$("tlnote").value,entries:[]};
+        $("tlentries").querySelectorAll(".tlentry").forEach(function(c){var e={};c.querySelectorAll("[data-k]").forEach(function(i){e[i.getAttribute("data-k")]=i.value});o.entries.push(e)});
+        localStorage.setItem(TLDK,JSON.stringify(o));
+      }catch(err){}
+    },400);
+  }
+  function tlDraftClear(){clearTimeout(tlDT);try{localStorage.removeItem(TLDK)}catch(err){}}
+  function tlDraftLoad(){
+    try{
+      var o=JSON.parse(localStorage.getItem(TLDK)||"null");if(!o||!o.entries||!o.entries.length)return;
+      ["date","week","dir","rule","note"].forEach(function(k){$("tl"+k).value=o[k]||""});
+      $("tlentries").innerHTML="";
+      o.entries.slice(0,TLMAX).forEach(function(e){
+        var c=tlRow();$("tlentries").appendChild(c);
+        Object.keys(e).forEach(function(k){var i=c.querySelector('[data-k="'+k+'"]');if(i)i.value=e[k]});
+        tlTp(c,e.tp2!==""&&e.tp2!=null||e.tp3!==""&&e.tp3!=null);tlSync(c);
+      });
+      tlRenumber();tlNoteVis();
+    }catch(err){}
+  }
+  ["tldate","tlweek","tldir","tlnote"].forEach(function(id){$(id).addEventListener("input",tlDraftSave);$(id).addEventListener("change",tlDraftSave)});
+  tlReset();tlDraftLoad();
   $("tlplus").addEventListener("click",function(){
     if($("tlentries").querySelectorAll(".tlentry").length>=TLMAX)return;
-    var r=tlRow();$("tlentries").appendChild(r);tlRenumber();r.querySelector("input").focus();
+    var r=tlRow();$("tlentries").appendChild(r);tlRenumber();r.querySelector("input").focus();tlDraftSave();
   });
   function f_(v){return v===""||v==null?"-":v}
   var tlPics=[],TLMAXPIC=3;
@@ -722,7 +776,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,rule:$("tlrule").value,note:$("tlnote").value.trim(),img:tlPics.slice(),entries:es};
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
       .then(function(){
-        ["tldir","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();tlPics=[];tlDrawPics();
+        ["tldir","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();tlNoteVis();tlPics=[];tlDrawPics();tlDraftClear();
         st.textContent="Sent. Checking your log... / Terkirim. Memeriksa catatanmu...";
         setTimeout(function(){tlBusy=false;$("tladd").disabled=false;tlLoad(true)},2000);
       })
