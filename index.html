@@ -183,23 +183,19 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
 <h2 class="sonly">Trade Log <span>/ Catatan Trade</span></h2>
 <details class="card sonly" id="tlbox">
   <summary style="cursor:pointer;font-weight:800">Open / Buka</summary>
-  <p class="empty" style="margin:10px 0">Add one row per trade. Use the same name and secret code as your card. / Tambah satu baris per trade. Pakai nama dan kode rahasia yang sama dengan kartumu.</p>
+  <p class="empty" style="margin:10px 0">Add one trade at a time. Use the same name and secret code as your card. / Tambah satu trade setiap kali. Pakai nama dan kode rahasia yang sama dengan kartumu.</p>
   <div class="grid">
     <div class="wide"><label class="f" for="tlname">Name <i>/ Nama</i></label><input type="text" id="tlname" autocomplete="name"></div>
     <div class="wide"><label class="f" for="tlcode">Secret code <i>/ Kode rahasia</i></label><input type="text" id="tlcode" autocomplete="off" maxlength="20"></div>
     <div><label class="f" for="tldate">Date <i>/ Tanggal</i></label><input type="date" id="tldate"></div>
     <div><label class="f" for="tlweek">Week <i>/ Minggu</i></label><input type="number" id="tlweek" min="1" max="12" inputmode="numeric" placeholder="1-12"></div>
     <div><label class="f" for="tldir">Buy or Sell <i>/ Arah</i></label><select id="tldir"><option value="">-</option><option value="Buy">Buy</option><option value="Sell">Sell</option></select></div>
-    <div><label class="f" for="tlresult">Result <i>/ Hasil</i></label><select id="tlresult"><option value="">-</option><option value="TP">TP</option><option value="SL">SL</option><option value="SL+">SL+</option><option value="Manual close">Manual close / Tutup manual</option></select></div>
+    <div><label class="f" for="tlrule">Rule broken? <i>/ Aturan dilanggar?</i></label><select id="tlrule"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
     <div class="wide"><label class="f">Entries <i>/ Entry</i></label>
-      <div class="hint" style="margin:0 0 6px">Write prices as on the chart, not the word "entry". Each entry has its own SL, TP1 and TP2. Press + for each averaging. / Tulis harga seperti di chart, bukan tulisan "entry". Tiap entry punya SL, TP1, dan TP2 sendiri. Tekan + untuk tiap averaging.</div>
+      <div class="hint" style="margin:0 0 6px">Write prices as on the chart, not the word "entry". Each entry has its own lot, SL, TP1 to TP3 and its own result, because averaging entries often close differently. Press + for each averaging. / Tulis harga seperti di chart, bukan tulisan "entry". Tiap entry punya lot, SL, TP1 sampai TP3, dan hasilnya sendiri, karena entry averaging sering tertutup berbeda. Tekan + untuk tiap averaging.</div>
       <div id="tlentries"></div>
       <button class="act" id="tlplus" type="button" style="margin-top:8px">+ Add averaging entry / Tambah entry averaging</button>
     </div>
-    <div><label class="f" for="tlhit">Hit 1:1? <i>/ Kena 1:1?</i></label><select id="tlhit"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
-    <div><label class="f" for="tlmoved">SL+ moved? <i>/ SL+ digeser?</i></label><select id="tlmoved"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
-    <div><label class="f" for="tleffect">SL+ effect <i>/ Efek SL+</i></label><select id="tleffect"><option value="">-</option><option value="Helped">Helped / Menolong</option><option value="Hurt">Hurt / Merugikan</option><option value="Neutral">Neutral / Netral</option></select></div>
-    <div><label class="f" for="tlrule">Rule broken? <i>/ Aturan dilanggar?</i></label><select id="tlrule"><option value="">-</option><option value="Yes">Yes / Ya</option><option value="No">No / Tidak</option></select></div>
     <div class="wide"><label class="f" for="tlnote">One line <i>/ Satu baris</i></label><textarea id="tlnote" maxlength="600" placeholder="I planned X. I did Y. Reason changed: ___ / Saya merencanakan X. Saya melakukan Y. Alasan berubah: ___"></textarea></div>
   </div>
   <div class="btns"><button class="act primary" id="tladd" type="button">Add trade / Tambah trade</button><button class="act" id="tlshow" type="button">Show my log / Lihat catatanku</button></div>
@@ -498,7 +494,7 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
   });
 
 
-  /* Trade Log: students add trades (name + secret code) and read their own log + summary */
+  /* Trade Log: one row per entry. Students add a trade (several entries) and read their own log + summary */
   $("tlbox").addEventListener("toggle",function(){
     if(!$("tlbox").open)return;
     if(!$("tlname").value)$("tlname").value=$("name").value||$("fbname").value;
@@ -506,7 +502,16 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if(!$("tldate").value){var t=new Date();$("tldate").value=t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2)}
     if(!$("tlweek").value)$("tlweek").value=$("week").value;
   });
-  var TLMAX=8,TLF=[["p","Entry price","Harga entry","3600.5"],["sl","SL price","Harga SL","3610"],["tp1","TP1 price","Harga TP1","3590"],["tp2","TP2 price (optional)","Harga TP2 (opsional)","3580"]];
+  var TLMAX=8,YN=[["Yes","Yes / Ya"],["No","No / Tidak"]];
+  var TLF=[
+    {k:"p",en:"Entry price",id:"Harga entry",ph:"3600.5"},{k:"lot",en:"Lot",id:"Lot",ph:"0.10"},
+    {k:"sl",en:"SL price",id:"Harga SL",ph:"3610"},{k:"tp1",en:"TP1 price",id:"Harga TP1",ph:"3590"},
+    {k:"tp2",en:"TP2 price (optional)",id:"Harga TP2 (opsional)",ph:"3580"},{k:"tp3",en:"TP3 price (optional)",id:"Harga TP3 (opsional)",ph:"3570"},
+    {k:"result",en:"Closed by",id:"Ditutup oleh",o:[["TP","TP"],["SL","SL"],["SL+","SL+"],["Manual close","Manual close / Tutup manual"]]},
+    {k:"reached",en:"Highest TP reached",id:"TP tertinggi tercapai",o:[["None","None / Tidak ada"],["TP1","TP1"],["TP2","TP2"],["TP3","TP3"]]},
+    {k:"hit",en:"Hit 1:1?",id:"Kena 1:1?",o:YN},{k:"slmoved",en:"SL+ moved?",id:"SL+ digeser?",o:YN},
+    {k:"sleffect",en:"SL+ effect",id:"Efek SL+",o:[["Helped","Helped / Menolong"],["Hurt","Hurt / Merugikan"],["Neutral","Neutral / Netral"]]}
+  ];
   function tlRow(){
     var card=document.createElement("div");card.className="tlentry";
     var th=document.createElement("div");th.className="th";
@@ -516,9 +521,12 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var g=document.createElement("div");g.className="tg";
     TLF.forEach(function(f){
       var d=document.createElement("div"),l=document.createElement("label");l.className="f";
-      var i=document.createElement("i");i.textContent="/ "+f[2];l.appendChild(document.createTextNode(f[1]+" "));l.appendChild(i);
-      var inp=document.createElement("input");inp.type="number";inp.step="any";inp.setAttribute("inputmode","decimal");inp.placeholder=f[3];inp.setAttribute("data-k",f[0]);
-      d.appendChild(l);d.appendChild(inp);g.appendChild(d);
+      var i=document.createElement("i");i.textContent="/ "+f.id;l.appendChild(document.createTextNode(f.en+" "));l.appendChild(i);
+      var inp;
+      if(f.o){inp=document.createElement("select");var o0=document.createElement("option");o0.value="";o0.textContent="-";inp.appendChild(o0);
+        f.o.forEach(function(o){var op=document.createElement("option");op.value=o[0];op.textContent=o[1];inp.appendChild(op)})}
+      else{inp=document.createElement("input");inp.type="number";inp.step="any";inp.setAttribute("inputmode","decimal");inp.placeholder=f.ph}
+      inp.setAttribute("data-k",f.k);d.appendChild(l);d.appendChild(inp);g.appendChild(d);
     });
     card.appendChild(g);return card;
   }
@@ -527,14 +535,14 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     cards.forEach(function(c,i){
       c.querySelector(".th b").textContent=i===0?"Entry 1":"Averaging "+i;
       c.querySelector(".rm").style.display=i===0?"none":"";
-      c.querySelectorAll("input").forEach(function(inp){inp.setAttribute("aria-label",(i===0?"Entry 1":"Averaging "+i)+" "+inp.getAttribute("data-k"))});
+      c.querySelectorAll("[data-k]").forEach(function(inp){inp.setAttribute("aria-label",(i===0?"Entry 1":"Averaging "+i)+" "+inp.getAttribute("data-k"))});
     });
     $("tlplus").disabled=cards.length>=TLMAX;
   }
   function tlReset(){$("tlentries").innerHTML="";$("tlentries").appendChild(tlRow());tlRenumber()}
   function tlEntries(){
     return Array.prototype.map.call($("tlentries").querySelectorAll(".tlentry"),function(c){
-      var o={};c.querySelectorAll("input").forEach(function(inp){o[inp.getAttribute("data-k")]=inp.value.trim()});return o;
+      var o={};c.querySelectorAll("[data-k]").forEach(function(inp){o[inp.getAttribute("data-k")]=inp.value.trim()});return o;
     }).filter(function(o){return o.p!==""});
   }
   tlReset();
@@ -542,31 +550,40 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     if($("tlentries").querySelectorAll(".tlentry").length>=TLMAX)return;
     var r=tlRow();$("tlentries").appendChild(r);tlRenumber();r.querySelector("input").focus();
   });
+  function f_(v){return v===""||v==null?"-":v}
   function tlLoad(done){
     var st=$("tlstatus"),n=$("tlname").value.trim(),c=$("tlcode").value.trim();
     if(!n||c.length<4){st.textContent="Type your name and your secret code. / Isi nama dan kode rahasiamu.";return}
     fetch(SEND_URL+"?action=trades&name="+encodeURIComponent(n)+"&code="+encodeURIComponent(c))
       .then(function(r){return r.json()})
       .then(function(d){
-        var out=$("tlout"),sum=$("tlsum");out.innerHTML="";sum.innerHTML="";
+        var out=$("tlout"),sum=$("tlsum");out.innerHTML="";sum.innerHTML="";sum.className="";
         if(d.locked){st.textContent="Too many tries. Please wait 15 minutes. / Terlalu banyak percobaan. Tunggu 15 menit.";return}
         if(!d.rows||!d.rows.length){st.textContent=done?"Not seen yet. Wait a few seconds and press Show my log. / Belum terlihat. Tunggu beberapa detik lalu tekan Lihat catatanku.":"No trades found. Check your name and code. / Belum ada trade. Periksa nama dan kodemu.";return}
         st.textContent=done?"Added \u2713 / Tersimpan \u2713":"";
-        var s=d.summary||{},rate=s.trades?Math.round(100*s.hit/s.trades)+"%":"-";
-        [[s.trades,"Trades / Jumlah trade"],[s.hit+" ("+rate+")","Hit 1:1 / Kena 1:1"],[s.rule,"Rule broken / Aturan dilanggar"],
-         [s.slmoved,"SL+ moved / SL+ digeser"],[s.helped+" / "+s.hurt,"SL+ helped / hurt / menolong / merugikan"],[s.avg==null?"-":s.avg,"Avg averaging / Rata-rata averaging"]].forEach(function(x,i){
-          if(i===0){sum.className="tlsum"}
+        var s=d.summary||{},rate=s.entries?Math.round(100*s.hit/s.entries)+"%":"-";
+        sum.className="tlsum";
+        [[s.trades,"Trades / Jumlah trade"],[s.entries,"Entries / Jumlah entry"],[s.trades?(Math.round(10*s.entries/s.trades)/10):"-","Entries per trade / Entry per trade"],
+         [s.lot,"Total lot"],[s.hit,"Hit 1:1 / Kena 1:1"],[rate,"Hit rate / Persentase"],
+         [s.tp1,"TP1 or more / TP1 atau lebih"],[s.tp2,"TP2 or more / TP2 atau lebih"],[s.tp3,"TP3 reached / TP3 tercapai"],
+         [s.slmoved,"SL+ moved / SL+ digeser"],[s.helped+" / "+s.hurt,"SL+ helped / hurt / menolong / merugikan"],[s.rule,"Rule broken / Aturan dilanggar"]].forEach(function(x){
           var b=document.createElement("div"),v=document.createElement("b"),l=document.createElement("small");
           v.textContent=x[0];l.textContent=x[1];b.appendChild(v);b.appendChild(l);sum.appendChild(b);
         });
-        d.rows.slice().reverse().forEach(function(r){
+        var groups=[],idx={};
+        d.rows.forEach(function(r){var k=r.date+"|"+r.trade;if(!(k in idx)){idx[k]=groups.length;groups.push([])}groups[idx[k]].push(r)});
+        groups.reverse().forEach(function(g){
+          var f=g[0],lots=0;g.forEach(function(r){if(typeof r.lot==="number")lots+=r.lot});
           var box=document.createElement("div");box.className="fbitem";
-          var h=document.createElement("b");h.textContent=(r.date||"")+" \u00b7 Week "+(r.week||"-")+" \u00b7 "+(r.dir||"-")+" \u00b7 "+(r.result||"-");
-          var sm=document.createElement("small");
-          function f_(v){return v===""||v==null?"-":v}
-          sm.textContent="Entry "+f_(r.entry)+" (SL "+f_(r.sl)+", TP1 "+f_(r.tp1)+(r.tp2!==""&&r.tp2!=null?", TP2 "+r.tp2:"")+")"+(r.avgtext?" | Averaging: "+r.avgtext:"")+" | 1:1 "+(r.hit||"-")+" | SL+ "+(r.slmoved||"-")+(r.sleffect?" ("+r.sleffect+")":"")+" | Rule broken "+(r.rule||"-");
-          box.appendChild(h);box.appendChild(sm);
-          if(r.note){var m=document.createElement("div");m.className="msg";m.textContent=r.note;box.appendChild(m)}
+          var h=document.createElement("b");h.textContent=(f.date||"")+" \u00b7 Week "+f_(f.week)+" \u00b7 Trade "+f_(f.trade)+" \u00b7 "+f_(f.dir)+" \u00b7 "+(Math.round(lots*100)/100)+" lot";
+          box.appendChild(h);
+          g.forEach(function(r){
+            var sm=document.createElement("small");
+            sm.textContent="Entry "+r.n+": "+(r.lot===""?"":r.lot+" lot @ ")+r.p+" | SL "+f_(r.sl)+" | TP1 "+f_(r.tp1)+(r.tp2!==""?" | TP2 "+r.tp2:"")+(r.tp3!==""?" | TP3 "+r.tp3:"")+" \u2192 closed by "+f_(r.result)+", reached "+f_(r.reached)+" | 1:1 "+f_(r.hit)+" | SL+ "+f_(r.slmoved)+(r.sleffect?" ("+r.sleffect+")":"");
+            box.appendChild(sm);
+          });
+          var extra=(f.rule?"Rule broken: "+f.rule:"");
+          if(extra||f.note){var m=document.createElement("div");m.className="msg";m.textContent=(extra?extra+(f.note?"\n":""):"")+(f.note||"");box.appendChild(m)}
           out.appendChild(box);
         });
       })
@@ -578,14 +595,15 @@ button.primary{background:var(--gold);border-color:var(--gold);color:#14213d}
     var st=$("tlstatus"),n=$("tlname").value.trim(),c=$("tlcode").value.trim();
     if(tlBusy)return;
     if(!n||c.length<4){st.textContent="Type your name and your secret code (min. 4). / Isi nama dan kode rahasia (min. 4).";return}
-    if(!$("tldate").value||!$("tldir").value||!$("tlresult").value||!tlEntries().length){st.textContent="Please fill date, Buy or Sell, Result and the entry price. / Isi tanggal, Buy atau Sell, Hasil, dan harga entry.";return}
+    var es=tlEntries();
+    if(!$("tldate").value||!$("tldir").value||!es.length){st.textContent="Please fill date, Buy or Sell and the entry price. / Isi tanggal, Buy atau Sell, dan harga entry.";return}
+    for(var i=0;i<es.length;i++){if(!es[i].result){st.textContent="Choose how each entry closed (Closed by). / Pilih entry ditutup oleh apa (Closed by) untuk tiap entry.";return}}
     if(!SEND_URL){st.textContent="Sending is not set up yet. / Pengiriman belum diatur.";return}
     tlBusy=true;$("tladd").disabled=true;st.textContent="Sending... / Mengirim...";
-    var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,entries:tlEntries(),
-      result:$("tlresult").value,hit:$("tlhit").value,slmoved:$("tlmoved").value,sleffect:$("tleffect").value,rule:$("tlrule").value,note:$("tlnote").value.trim()};
+    var body={token:SEND_TOKEN,kind:"trade",name:n,code:c,date:$("tldate").value,week:$("tlweek").value,dir:$("tldir").value,rule:$("tlrule").value,note:$("tlnote").value.trim(),entries:es};
     fetch(SEND_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)})
       .then(function(){
-        ["tldir","tlresult","tlhit","tlmoved","tleffect","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();
+        ["tldir","tlrule","tlnote"].forEach(function(id){$(id).value=""});tlReset();
         st.textContent="Sent. Checking your log... / Terkirim. Memeriksa catatanmu...";
         setTimeout(function(){tlBusy=false;$("tladd").disabled=false;tlLoad(true)},2000);
       })
